@@ -97,8 +97,8 @@ def check_density_of_gaps(df: pd.DataFrame, window_size: str, max_gap_num: int):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('file', type=str, help='path to RINEX file')
-    parser.add_argument('interval', type=int, help='interval of RINEX file, in seconds')
-    parser.add_argument('window_size', type=int, help='size for the rolling window to check gaps, in seconds')
+    parser.add_argument('interval', type=float, help='interval of RINEX file, in seconds')
+    parser.add_argument('window_size', type=float, help='size for the rolling window to check gaps, in seconds')
     parser.add_argument('max_gap_num', type=int, help='maximum number of gaps in the rolling window')
     args = parser.parse_args()
 
