@@ -2,82 +2,87 @@ import pprint
 import argparse
 import pandas as pd
 from math import isclose
-from gnss_tec import rnx
+from types import MappingProxyType
+from gnss_tec import rnx, BAND_PRIORITY
 from datetime import datetime, timedelta
 
 
-def find_gaps(file: str, interval: timedelta):
-    all_available_times = set()
-    gaps_by_sat = {}
+def read_to_df(file: str, band_priority: MappingProxyType = BAND_PRIORITY):
+    data = []
+
     with open(file) as obs_file:
-        reader = rnx(obs_file)
-        prev_timestamps = {}
+        reader = rnx(obs_file, band_priority=band_priority)
         for observables in reader:
-            current_timestamp = observables.timestamp
-            current_satellite = observables.satellite
+            data.append((
+                observables.satellite,
+                observables.timestamp,
+            ))
 
-            all_available_times.add(current_timestamp)
+    df = pd.DataFrame(data, columns=("Satellite", "Timestamp"))
 
-            if not current_satellite in prev_timestamps.keys():
-                prev_timestamps[current_satellite] = current_timestamp
-            else:
-                if not current_satellite in gaps_by_sat.keys():
-                        gaps_by_sat[current_satellite] = []
-                interval_between_measurements = current_timestamp - prev_timestamps[current_satellite]
-                if interval_between_measurements > interval:
-                    gap_duration = interval_between_measurements - interval
-                    gap_time = current_timestamp - gap_duration
-                    gaps_by_sat[current_satellite].append((gap_time, gap_duration))
-                prev_timestamps[current_satellite] = current_timestamp
+    return df
 
+
+def find_common_gaps(df: pd.DataFrame, interval: timedelta):
+    all_available_times = df['Timestamp'].unique()
     all_available_times = sorted(all_available_times)
-    df = pd.DataFrame(list(all_available_times), columns=('Timestamp',))
-    df['Timedelta'] = df.diff()
-    all_sats_gaps = df[df['Timedelta'] > interval]
-    gaps = []
-    for index in all_sats_gaps.index:
-        gap_duration = df.loc[index]['Timedelta'].to_pytimedelta() - interval
-        gap_time = df.loc[index]['Timestamp'].to_pydatetime() - gap_duration
-        gaps.append((gap_time, gap_duration))
+    all_available_times = pd.DataFrame(list(all_available_times), columns=('Timestamp',))
+    all_available_times['Duration'] = all_available_times.diff()
+    all_sats_gaps = all_available_times[all_available_times['Duration'] > interval].copy()
 
-    filtered_gaps_by_sat = {}
+    all_sats_gaps['Duration'] = all_sats_gaps['Duration'] - interval
+    all_sats_gaps['Timestamp'] = all_sats_gaps['Timestamp'] - all_sats_gaps['Duration']
 
-    for sat in gaps_by_sat.keys():
-        filtered_gaps = [gap for gap in gaps_by_sat[sat] if gap not in gaps]
-        if len(filtered_gaps) > 0:
-            filtered_gaps_by_sat[sat] = filtered_gaps
+    all_sats_gaps = all_sats_gaps.reset_index(drop=True)
 
-    gaps_df = pd.DataFrame(data=[gap[1] for gap in gaps], index=[
-                           gap[0] for gap in gaps], columns=('Timedelta', ))
-    gaps_df = gaps_df.sort_index()
+    return all_sats_gaps
 
-    gaps_by_sat_df = {}
-    for sat in gaps_by_sat.keys():
-        temp_df = pd.DataFrame(data=[gap[1] for gap in gaps_by_sat[sat]], index=[
-                                           gap[0] for gap in gaps_by_sat[sat]], columns=('Timedelta', ))
-        temp_df = temp_df.sort_index()
-        gaps_by_sat_df[sat] = temp_df
 
-    return gaps_df, gaps_by_sat_df
+def find_gaps_in_sats(df: pd.DataFrame, interval: timedelta, common_gaps: pd.DataFrame):
+    sats = df['Satellite'].unique()
+
+    gaps_by_sat = {}
+
+    for sat in sats:
+        sat_df = df[df['Satellite'] == sat]
+        sat_df = sat_df.sort_values(by=['Timestamp'])
+        sat_df['Duration'] = sat_df['Timestamp'].diff()
+        gaps = sat_df[sat_df['Duration'] > interval]
+        gaps = gaps.drop(columns=['Satellite',])
+        gaps['Duration'] = gaps['Duration'] - interval
+        gaps['Timestamp'] = gaps['Timestamp'] - gaps['Duration']
+        gaps = gaps.reset_index(drop=True)
+
+
+        merge_df = gaps.merge(common_gaps, on=['Timestamp','Duration'], 
+                   how='left', indicator=True)
+
+        gaps_without_common_gaps = merge_df[merge_df['_merge'] == 'left_only']
+        gaps_without_common_gaps = gaps_without_common_gaps.drop(columns=['_merge',])
+        gaps_by_sat[sat] = gaps_without_common_gaps
+
+    return gaps_by_sat
 
 
 def check_density_of_gaps(df: pd.DataFrame, window_size: str, max_gap_num: int):
+    work_df = df.copy()
+    work_df = work_df.set_index(keys='Timestamp', drop=True)
     windows = []
     i = 0
 
-    if len(df):
-        for window in df.rolling(window_size):
+    if len(work_df):
+        for window in work_df.rolling(window_size):
             if len(window) > max_gap_num:
                 if not len(windows) > 0:
                     windows.append(set())
-                if len(windows[i]) == 0 or (window.index[0], window.loc[window.index[0]]['Timedelta']) in windows[i]:
+                if len(windows[i]) == 0 or (window.index[0], window.loc[window.index[0]]['Duration']) in windows[i]:
                     for index in window.index:
-                        windows[i].add((index, window.loc[index]['Timedelta']))
+                        windows[i].add((index, window.loc[index]['Duration']))
                 else:
                     windows.append(set())
                     i += 1
                     for index in window.index:
-                        windows[i].add((index, window.loc[index]['Timedelta']))
+                        windows[i].add((index, window.loc[index]['Duration']))
 
     windows = [sorted(window) for window in windows]
     
@@ -96,17 +101,20 @@ if __name__ == '__main__':
     parser.add_argument('window_size', type=int, help='size for the rolling window to check gaps, in seconds')
     parser.add_argument('max_gap_num', type=int, help='maximum number of gaps in the rolling window')
     args = parser.parse_args()
-    
+
     interval = timedelta(seconds=args.interval)
     window_size = str(args.window_size) + 'S'
 
-    common_gaps_df, gaps_by_sat_df = find_gaps(args.file, interval)
-    
+    df = read_to_df(args.file)
+
+    common_gaps_df = find_common_gaps(df, interval)
     common_problems = check_density_of_gaps(common_gaps_df, window_size, args.max_gap_num)
 
+    gaps_by_sat_df = find_gaps_in_sats(df, interval, common_gaps_df)
     problems_by_sat = {}
     for sat in gaps_by_sat_df.keys():
         problems_by_sat[sat] = check_density_of_gaps(gaps_by_sat_df[sat], window_size, args.max_gap_num)
+    
 
     print('Common problems')
     pprint.pprint(common_problems)
