@@ -1,13 +1,9 @@
-from ast import arg
-from ctypes.wintypes import HRSRC
-from operator import le
 import os
-from datetime import datetime, timedelta
-from gnss_tec import rnx
-import pandas as pd
-from timeit import default_timer as timer
-from math import isclose
 import argparse
+import pandas as pd
+from math import isclose
+from gnss_tec import rnx
+from datetime import datetime, timedelta
 
 
 def find_gaps(file: str, deltatime: timedelta):
