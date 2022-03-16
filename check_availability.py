@@ -1,4 +1,5 @@
 import os
+import pprint
 import argparse
 import pandas as pd
 from math import isclose
@@ -69,34 +70,30 @@ def check_duration_of_gaps(df: pd.DataFrame, deltatime: timedelta):
     # print('Прошло по длине пропуска')
 
 
-def check_density_of_gaps(df: pd.DataFrame, window_size: str, max_gap_count: int):
+def check_density_of_gaps(df: pd.DataFrame, window_size: str, max_gap_num: int):
     windows = []
-    windows.append(set())
     i = 0
 
-    for window in df.rolling(window_size):
-        print(window)
-        if len(window) > max_gap_count:
-            if len(windows[i]) == 0:
-                for index in window.index:
-                    windows[i].add(index)
-            elif window.index[0] in windows[i]:
-                for index in window.index:
-                    windows[i].add(index)
-            else:
-                windows.append(set())
-                i += 1
-                for index in window.index:
-                    windows[i].add(index)
+    if len(df):
+        for window in df.rolling(window_size):
+            if len(window) > max_gap_num:
+                if not len(windows) > 0:
+                    windows.append(set())
+                if len(windows[i]) == 0 or (window.index[0], window.loc[window.index[0]]['Timedelta']) in windows[i]:
+                    for index in window.index:
+                        windows[i].add((index, window.loc[index]['Timedelta']))
+                else:
+                    windows.append(set())
+                    i += 1
+                    for index in window.index:
+                        windows[i].add((index, window.loc[index]['Timedelta']))
 
     windows = [sorted(window) for window in windows]
     
     ret = []
     for window in windows:
         if len(window):
-            ret.append((window[0], window[-1]))
-
-    print(ret)
+            ret.append((window[0][0], window[-1][0] + window[-1][1]))
 
     return ret
 
@@ -104,15 +101,18 @@ def check_density_of_gaps(df: pd.DataFrame, window_size: str, max_gap_count: int
 def main_f(file, interval, window_size, max_gap_num):
     common_gaps_df, gaps_by_sat_df = find_gaps(file, interval)
 
-    problems_by_sat = {}
+    common_problems = check_density_of_gaps(common_gaps_df, window_size, max_gap_num)
 
+    problems_by_sat = {}
     for sat in gaps_by_sat_df.keys():
         problems_by_sat[sat] = check_density_of_gaps(gaps_by_sat_df[sat], window_size, max_gap_num)
 
-    for sat in problems_by_sat.keys():
-        print(sat)
-        for problem in problems_by_sat[sat]:
-            print(problem)
+    pprint.pprint(common_problems)
+    pprint.pprint(problems_by_sat)
+    # for sat in problems_by_sat.keys():
+    #     print(sat)
+    #     for problem in problems_by_sat[sat]:
+    #         print(problem)
         
 
 
