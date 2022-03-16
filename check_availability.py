@@ -1,4 +1,3 @@
-import os
 import pprint
 import argparse
 import pandas as pd
@@ -60,16 +59,6 @@ def find_gaps(file: str, deltatime: timedelta):
     return gaps_df, gaps_by_sat_df
 
 
-def check_duration_of_gaps(df: pd.DataFrame, deltatime: timedelta):
-    max_timedelta = df[df['Timedelta'] > deltatime]
-    print('Duration')
-    print(max_timedelta)
-    # if len(max_timedelta) > 0:
-    #     print('Не прошло по длине пропуска')
-    #     return
-    # print('Прошло по длине пропуска')
-
-
 def check_density_of_gaps(df: pd.DataFrame, window_size: str, max_gap_num: int):
     windows = []
     i = 0
@@ -98,44 +87,26 @@ def check_density_of_gaps(df: pd.DataFrame, window_size: str, max_gap_num: int):
     return ret
 
 
-def main_f(file, interval, window_size, max_gap_num):
-    common_gaps_df, gaps_by_sat_df = find_gaps(file, interval)
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('file', type=str, help='path to RINEX file')
+    parser.add_argument('interval', type=int, help='interval of RINEX file, in seconds')
+    parser.add_argument('window_size', type=int, help='size for the rolling window to check gaps, in seconds')
+    parser.add_argument('max_gap_num', type=int, help='maximum number of gaps in the rolling window')
+    args = parser.parse_args()
+    
+    interval = timedelta(seconds=args.interval)
+    window_size = str(args.window_size) + 'S'
 
-    common_problems = check_density_of_gaps(common_gaps_df, window_size, max_gap_num)
+    common_gaps_df, gaps_by_sat_df = find_gaps(args.file, interval)
+
+    common_problems = check_density_of_gaps(common_gaps_df, window_size, args.max_gap_num)
 
     problems_by_sat = {}
     for sat in gaps_by_sat_df.keys():
-        problems_by_sat[sat] = check_density_of_gaps(gaps_by_sat_df[sat], window_size, max_gap_num)
+        problems_by_sat[sat] = check_density_of_gaps(gaps_by_sat_df[sat], window_size, args.max_gap_num)
 
+    print('Common problems')
     pprint.pprint(common_problems)
+    print('Problems by satellite')
     pprint.pprint(problems_by_sat)
-    # for sat in problems_by_sat.keys():
-    #     print(sat)
-    #     for problem in problems_by_sat[sat]:
-    #         print(problem)
-        
-
-
-
-if __name__ == '__main__':
-    file1 = 'observables\IST5063W.22O' # одна дыра
-    file2 = 'C:\\Users\\vladm\\Documents\\Работа\\chart +\\observables\\IST5062F.22O' # несколько дыр 
-    file3 = "C:\\Users\\vladm\\Documents\\Работа\\chart +\\march9\\SEPT0680.22O" # большой файл (не проходит проверки)
-    file4 = "C:\\Users\\vladm\\Documents\\Работа\\chart +\\100H\\IST5069H.22O" # после 100 герц, очень много пропусков
-    march11_13 = "R:\\Septentrio\\22070\\IST5070F.22O"
-    march11_15 = "R:\\Septentrio\\22070\\IST5070H.22O"
-    march11_15_20msec = "C:\\Users\\vladm\\Documents\\Работа\\chart +\\march11\\SEPT0700.22O"
-    # interval = timedelta(milliseconds=20)
-    interval = timedelta(seconds=30)
-    window_size = '10min'
-    max_gap_num = 1
-    main_f(march11_13, interval, window_size, max_gap_num)
-
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('file', type=str, help='path to RINEX file')
-    # parser.add_argument('interval', type=int, help='interval of RINEX file, in seconds')
-    # parser.add_argument('window_size', type=int, help='size for the rolling window to check gaps, in seconds')
-    # parser.add_argument('max_gap_num', type=int, help='maximum number of gaps in the rolling window')
-    # args = parser.parse_args()
-
-    # main_f(args.file, args.interval, str(args.window_size) + 'S', args.gap_num)
