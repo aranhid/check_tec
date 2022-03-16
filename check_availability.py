@@ -1,6 +1,7 @@
 import pprint
 import argparse
 import pandas as pd
+import plotly.express as px
 from math import isclose
 from types import MappingProxyType
 from gnss_tec import rnx, BAND_PRIORITY
@@ -94,6 +95,51 @@ def check_density_of_gaps(df: pd.DataFrame, window_size: str, max_gap_num: int):
     return ret
 
 
+def create_simple_plot(df: pd.DataFrame, interval: timedelta):
+    work_df = df.copy()
+    work_df['Timestamp end'] = work_df['Timestamp'] + interval
+    fig = px.timeline(work_df, x_start="Timestamp",
+                      x_end="Timestamp end", y="Satellite")
+    fig.show()
+
+
+def create_debug_plot(df: pd.DataFrame, interval: timedelta, common_gaps: pd.DataFrame, gaps_by_sat, problems_by_sat):
+    work_df = df.copy()
+    work_df = work_df.sort_values(by=('Satellite'))
+    work_df['Color'] = 'blue'
+    work_df['Timestamp end'] = work_df['Timestamp'] + interval
+
+    for sat in work_df['Satellite'].unique():
+        common_gaps_copy = common_gaps.copy()
+        common_gaps_copy['Color'] = 'green'
+        common_gaps_copy['Satellite'] = sat
+        common_gaps_copy['Timestamp end'] = common_gaps_copy['Timestamp'] + common_gaps_copy['Duration']
+        work_df = pd.concat([work_df, common_gaps_copy])
+
+    for sat in gaps_by_sat_df.keys():
+        sat_gaps_copy = gaps_by_sat[sat]
+        sat_gaps_copy['Color'] = 'yellow'
+        sat_gaps_copy['Satellite'] = sat
+        sat_gaps_copy['Timestamp end'] = sat_gaps_copy['Timestamp'] + sat_gaps_copy['Duration']
+        work_df = pd.concat([work_df, sat_gaps_copy])
+
+    work_df = work_df.reset_index(drop=True)
+
+    for sat in problems_by_sat:
+        if len(problems_by_sat[sat]) > 0:
+            for problem in problems_by_sat[sat]:
+                sat_df = work_df[work_df['Satellite'] == sat]
+                sat_df = sat_df[sat_df['Timestamp'] >= problem[0]]
+                sat_df = sat_df[sat_df['Timestamp'] < problem[1]]
+                for index in sat_df.index:
+                    work_df.loc[index, ('Color',)] = 'red'
+
+    discrete_map_resource = { 'red': '#FF0000', 'green': '#00FF00', 'blue': '#0000FF', 'yellow': '#FFFF00'}
+    fig = px.timeline(work_df, x_start='Timestamp',
+                      x_end='Timestamp end', y='Satellite', color='Color', color_discrete_map=discrete_map_resource)
+    fig.show()
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('file', type=str, help='path to RINEX file')
@@ -115,6 +161,7 @@ if __name__ == '__main__':
     for sat in gaps_by_sat_df.keys():
         problems_by_sat[sat] = check_density_of_gaps(gaps_by_sat_df[sat], window_size, args.max_gap_num)
     
+    create_debug_plot(df, interval, common_gaps_df, gaps_by_sat_df, problems_by_sat)
 
     print('Common problems')
     pprint.pprint(common_problems)
