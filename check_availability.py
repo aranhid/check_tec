@@ -60,6 +60,7 @@ def find_gaps_in_sats(df: pd.DataFrame, interval: timedelta, common_gaps: pd.Dat
 
         gaps_without_common_gaps = merge_df[merge_df['_merge'] == 'left_only']
         gaps_without_common_gaps = gaps_without_common_gaps.drop(columns=['_merge',])
+        gaps_without_common_gaps = gaps_without_common_gaps.reset_index(drop=True)
         gaps_by_sat[sat] = gaps_without_common_gaps
 
     return gaps_by_sat
