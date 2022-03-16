@@ -6,7 +6,7 @@ from gnss_tec import rnx
 from datetime import datetime, timedelta
 
 
-def find_gaps(file: str, deltatime: timedelta):
+def find_gaps(file: str, interval: timedelta):
     all_available_times = set()
     gaps_by_sat = {}
     with open(file) as obs_file:
@@ -23,19 +23,21 @@ def find_gaps(file: str, deltatime: timedelta):
             else:
                 if not current_satellite in gaps_by_sat.keys():
                         gaps_by_sat[current_satellite] = []
-                gap_duration = current_timestamp - prev_timestamps[current_satellite]
-                if gap_duration > deltatime:
-                    gaps_by_sat[current_satellite].append((current_timestamp - gap_duration + deltatime, gap_duration - deltatime))
+                interval_between_measurements = current_timestamp - prev_timestamps[current_satellite]
+                if interval_between_measurements > interval:
+                    gap_duration = interval_between_measurements - interval
+                    gap_time = current_timestamp - gap_duration
+                    gaps_by_sat[current_satellite].append((gap_time, gap_duration))
                 prev_timestamps[current_satellite] = current_timestamp
 
     all_available_times = sorted(all_available_times)
-    df = pd.DataFrame(list(all_available_times), columns=('Timedelta',))
-    timedeltas = df.diff()
-    all_sats_gaps = timedeltas[timedeltas['Timedelta'] > deltatime]
+    df = pd.DataFrame(list(all_available_times), columns=('Timestamp',))
+    df['Timedelta'] = df.diff()
+    all_sats_gaps = df[df['Timedelta'] > interval]
     gaps = []
     for index in all_sats_gaps.index:
-        gap_time = df.loc[index]['Timedelta'].to_pydatetime() - gap_duration + deltatime
-        gap_duration = timedeltas.loc[index]['Timedelta'].to_pytimedelta() - deltatime
+        gap_duration = df.loc[index]['Timedelta'].to_pytimedelta() - interval
+        gap_time = df.loc[index]['Timestamp'].to_pydatetime() - gap_duration
         gaps.append((gap_time, gap_duration))
 
     filtered_gaps_by_sat = {}
@@ -99,7 +101,7 @@ if __name__ == '__main__':
     window_size = str(args.window_size) + 'S'
 
     common_gaps_df, gaps_by_sat_df = find_gaps(args.file, interval)
-
+    
     common_problems = check_density_of_gaps(common_gaps_df, window_size, args.max_gap_num)
 
     problems_by_sat = {}
