@@ -107,19 +107,19 @@ def create_simple_plot(df: pd.DataFrame, interval: timedelta):
 def create_debug_plot(df: pd.DataFrame, interval: timedelta, common_gaps: pd.DataFrame, gaps_by_sat, problems_by_sat):
     work_df = df.copy()
     work_df = work_df.sort_values(by=('Satellite'))
-    work_df['Color'] = 'blue'
+    work_df['Status'] = 'Normal'
     work_df['Timestamp end'] = work_df['Timestamp'] + interval
 
     for sat in work_df['Satellite'].unique():
         common_gaps_copy = common_gaps.copy()
-        common_gaps_copy['Color'] = 'green'
+        common_gaps_copy['Status'] = 'Common gap'
         common_gaps_copy['Satellite'] = sat
         common_gaps_copy['Timestamp end'] = common_gaps_copy['Timestamp'] + common_gaps_copy['Duration']
         work_df = pd.concat([work_df, common_gaps_copy])
 
     for sat in gaps_by_sat_df.keys():
         sat_gaps_copy = gaps_by_sat[sat]
-        sat_gaps_copy['Color'] = 'yellow'
+        sat_gaps_copy['Status'] = 'Satellite gap'
         sat_gaps_copy['Satellite'] = sat
         sat_gaps_copy['Timestamp end'] = sat_gaps_copy['Timestamp'] + sat_gaps_copy['Duration']
         work_df = pd.concat([work_df, sat_gaps_copy])
@@ -133,11 +133,11 @@ def create_debug_plot(df: pd.DataFrame, interval: timedelta, common_gaps: pd.Dat
                 sat_df = sat_df[sat_df['Timestamp'] >= problem[0]]
                 sat_df = sat_df[sat_df['Timestamp'] < problem[1]]
                 for index in sat_df.index:
-                    work_df.loc[index, ('Color',)] = 'red'
+                    work_df.loc[index, ('Status',)] = 'Problem window'
 
-    discrete_map_resource = { 'red': '#FF0000', 'green': '#00FF00', 'blue': '#0000FF', 'yellow': '#FFFF00'}
+    discrete_map_resource = { 'Problem window': '#FF0000', 'Common gap': '#00FF00', 'Normal': '#0000FF', 'Satellite gap': '#FFFF00'}
     fig = px.timeline(work_df, x_start='Timestamp',
-                      x_end='Timestamp end', y='Satellite', color='Color', color_discrete_map=discrete_map_resource)
+                      x_end='Timestamp end', y='Satellite', color='Status', color_discrete_map=discrete_map_resource)
     fig.show()
 
 
