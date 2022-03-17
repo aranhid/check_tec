@@ -115,16 +115,14 @@ def create_debug_plot(df: pd.DataFrame, interval: timedelta, common_gaps: pd.Dat
         common_gaps_copy['Status'] = 'Common gap'
         common_gaps_copy['Satellite'] = sat
         common_gaps_copy['Timestamp end'] = common_gaps_copy['Timestamp'] + common_gaps_copy['Duration']
-        work_df = pd.concat([work_df, common_gaps_copy])
+        work_df = pd.concat([work_df, common_gaps_copy], ignore_index=True)
 
     for sat in gaps_by_sat_df.keys():
         sat_gaps_copy = gaps_by_sat[sat]
         sat_gaps_copy['Status'] = 'Satellite gap'
         sat_gaps_copy['Satellite'] = sat
         sat_gaps_copy['Timestamp end'] = sat_gaps_copy['Timestamp'] + sat_gaps_copy['Duration']
-        work_df = pd.concat([work_df, sat_gaps_copy])
-
-    work_df = work_df.reset_index(drop=True)
+        work_df = pd.concat([work_df, sat_gaps_copy], ignore_index=True)
 
     for sat in problems_by_sat:
         if len(problems_by_sat[sat]) > 0:
