@@ -143,16 +143,21 @@ def create_debug_plot(df: pd.DataFrame, interval: timedelta, common_gaps: pd.Dat
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('file', type=str, help='path to RINEX file')
-    parser.add_argument('interval', type=float, help='interval of RINEX file, in seconds')
-    parser.add_argument('window_size', type=float, help='size for the rolling window to check gaps, in seconds')
-    parser.add_argument('max_gap_num', type=int, help='maximum number of gaps in the rolling window')
+    parser.add_argument('--files', type=str, nargs='+', help='path to RINEX file')
+    parser.add_argument('--interval', type=float, help='interval of RINEX file, in seconds')
+    parser.add_argument('--window-size', type=float, help='size for the rolling window to check gaps, in seconds')
+    parser.add_argument('--max-gap-num', type=int, help='maximum number of gaps in the rolling window')
     args = parser.parse_args()
 
     interval = timedelta(seconds=args.interval)
     window_size = str(args.window_size) + 'S'
 
-    df = read_to_df(args.file)
+    df = pd.DataFrame()
+
+    for file in args.files:
+        print(f'Read {file}')
+        temp_df = read_to_df(file)
+        df = pd.concat([df, temp_df], ignore_index=True)
 
     common_gaps_df = find_common_gaps(df, interval)
     common_problems = check_density_of_gaps(common_gaps_df, window_size, args.max_gap_num)
