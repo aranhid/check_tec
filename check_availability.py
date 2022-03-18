@@ -104,7 +104,7 @@ def create_simple_plot(df: pd.DataFrame, interval: timedelta):
     fig.show()
 
 
-def create_debug_plot(df: pd.DataFrame, interval: timedelta, common_gaps: pd.DataFrame, gaps_by_sat, problems_by_sat):
+def create_debug_plot(df: pd.DataFrame, interval: timedelta, common_gaps: pd.DataFrame, gaps_by_sat: dict, problems_by_sat: dict, filename: str = None, show: bool = False):
     work_df = df.copy()
     work_df = work_df.sort_values(by=('Satellite'))
     work_df['Status'] = 'Normal'
@@ -136,7 +136,10 @@ def create_debug_plot(df: pd.DataFrame, interval: timedelta, common_gaps: pd.Dat
     discrete_map_resource = { 'Problem window': '#FF0000', 'Common gap': '#00FF00', 'Normal': '#0000FF', 'Satellite gap': '#FFFF00'}
     fig = px.timeline(work_df, x_start='Timestamp',
                       x_end='Timestamp end', y='Satellite', color='Status', color_discrete_map=discrete_map_resource)
-    fig.show()
+    if show:
+        fig.show()
+    if filename:
+        fig.write_image(filename, width=1920, height=1080)
 
 
 if __name__ == '__main__':
@@ -145,6 +148,8 @@ if __name__ == '__main__':
     parser.add_argument('--interval', type=float, help='interval of RINEX file, in seconds')
     parser.add_argument('--window-size', type=float, help='size for the rolling window to check gaps, in seconds')
     parser.add_argument('--max-gap-num', type=int, help='maximum number of gaps in the rolling window')
+    parser.add_argument('--plot-show', action='store_true', help='show plot')
+    parser.add_argument('--plot-file', type=str, default=None, help='path for plot image')
     args = parser.parse_args()
 
     interval = timedelta(seconds=args.interval)
@@ -165,7 +170,8 @@ if __name__ == '__main__':
     for sat in gaps_by_sat_df.keys():
         problems_by_sat[sat] = check_density_of_gaps(gaps_by_sat_df[sat], window_size, args.max_gap_num)
     
-    create_debug_plot(df, interval, common_gaps_df, gaps_by_sat_df, problems_by_sat)
+    if args.plot_show or not args.plot_file == None:
+        create_debug_plot(df=df, interval=interval, common_gaps=common_gaps_df, gaps_by_sat=gaps_by_sat_df, problems_by_sat=problems_by_sat, show=args.plot_show, filename=args.plot_file)
 
     print('Common problems')
     pprint.pprint(common_problems)
