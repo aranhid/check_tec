@@ -2,3 +2,4 @@ pandas>=1.1
 gnss-tec>=1.1.1
 plotly>=5.3.1
 kaleido>=0.2.1
+git+https://github.com/gnss-lab/coordinates.git#egg=coordinates
