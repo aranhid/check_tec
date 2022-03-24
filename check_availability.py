@@ -84,13 +84,22 @@ def check_density_of_gaps(df: pd.DataFrame, window_size: float, max_gap_num: int
             check_left = window.iloc[0 : len(window) // 2]
             check_right = window.iloc[len(window) // 2 : len(window)]
 
-            if len(check_left[check_left['Status'] == 'Data']) and len(check_right[check_right['Status'] == 'None']) >= len(window) // 2:
+            # check end of session
+            if len(check_left[check_left['Status'] == 'Data']) and\
+            (len(check_right[check_right['Status'] == 'None']) + len(check_right[check_right['Status'] == 'Common gap'])) == len(window) // 2:
                 if len(windows) > i:
                     windows[i].difference_update(window.index.to_pydatetime())
                 continue
+            # end check end of session
 
+            # check start of session
             if window.iloc[-1]['Status'] == 'Data' and len(window[window['Status'] == 'Data']) == 1:
                 start_time = window.iloc[-1].name
+
+            if len(check_right[check_right['Status'] == 'Data']) and\
+            (len(check_left[check_left['Status'] == 'None']) + len(check_left[check_left['Status'] == 'Common gap'])) == len(window) // 2:
+                continue
+            #end check start of session
         
         gaps = window[window['Status'] == 'None']
         if len(gaps) > max_gap_num:
