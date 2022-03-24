@@ -70,14 +70,12 @@ def prepare_dataframe(df: pd.DataFrame, common_gaps_df: pd.DataFrame, interval: 
 
 
 def check_density_of_gaps(df: pd.DataFrame, window_size: str, max_gap_num: int):
-    work_df = df.copy()
-    work_df = work_df.set_index(keys='Timestamp', drop=True)
     windows = []
     i = 0
 
     start_time = None
 
-    for window in work_df.rolling(window_size):
+    for window in df.rolling(window=window_size, on='Timestamp'):
         if len(window) == (len(window[window['Status'] == 'None']) + len(window[window['Status'] == 'Common gap'])):
             continue
 
