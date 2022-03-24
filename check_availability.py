@@ -1,3 +1,4 @@
+import math
 import pprint
 import argparse
 import pandas as pd
@@ -6,6 +7,7 @@ from types import MappingProxyType
 from gnss_tec import rnx, BAND_PRIORITY
 from datetime import datetime, timedelta
 
+from locate_sat import get_elevations
 
 def read_to_df(file: str, band_priority: MappingProxyType = BAND_PRIORITY):
     data = []
@@ -156,6 +158,35 @@ def create_debug_plot(df: pd.DataFrame, problems_by_sat: dict, interval: timedel
         fig.write_image(filename, width=1920, height=1080)
 
 
+def add_elevations(df: pd.DataFrame, xyz: list, nav_path: str, year: int, doy: int, cutoff: float):
+    working_df = df.copy()
+    working_df['Elevation'] = 'None'
+
+    elevations_for_sat = get_elevations(nav_path, xyz, year, doy, cutoff)
+
+    for sat in working_df['Satellite'].unique():
+        sat_df = working_df[working_df['Satellite'] == sat]
+
+        elevation = list(elevations_for_sat[sat])
+        elevation = ['None' if math.isnan(el) else el for el in elevation]
+
+        working_df.loc[sat_df.index, 'Elevation'] = elevation
+    
+    return working_df
+
+
+def get_xyz(file: str):
+    with open(file, 'r') as f:
+        for i in range(30):
+            line = f.readline()
+            if 'APPROX POSITION XYZ' in line:
+                splited = line.split()
+                xyz = splited[0:3]
+                xyz = list(map(float, xyz))
+                print(splited)
+                return xyz
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--files', type=str, nargs='+', help='path to RINEX file')
@@ -164,11 +195,16 @@ if __name__ == '__main__':
     parser.add_argument('--max-gap-num', type=int, help='maximum number of gaps in the rolling window')
     parser.add_argument('--plot-show', action='store_true', help='show plot')
     parser.add_argument('--plot-file', type=str, default=None, help='path for plot image')
+    parser.add_argument('--nav-file', type=str, help='path to NAV file')
+    parser.add_argument('--year', type=int, help='Year like 2022')
+    parser.add_argument('--doy', type=int, help='Day of year like 103')
+    parser.add_argument('--cutoff', type=float, help='Cutoff for elevation')
     args = parser.parse_args()
 
     interval = timedelta(seconds=args.interval)
 
     df = pd.DataFrame()
+    xyz = get_xyz(args.files[0])
 
     for file in args.files:
         print(f'Read {file}')
@@ -179,6 +215,8 @@ if __name__ == '__main__':
 
     working_df = prepare_dataframe(df, common_gaps_df, interval)
 
+    if (args.nav_file):
+        working_df = add_elevations(working_df, args.nav_file, args.year, args.doy, args.cutoff)
     problems_by_sat = {}
     for sat in working_df['Satellite'].unique():
         problems_by_sat[sat] = check_density_of_gaps(working_df[working_df['Satellite'] == sat], args.window_size, args.max_gap_num)
