@@ -69,13 +69,14 @@ def prepare_dataframe(df: pd.DataFrame, common_gaps_df: pd.DataFrame, interval: 
     return ret_df
 
 
-def check_density_of_gaps(df: pd.DataFrame, window_size: str, max_gap_num: int):
+def check_density_of_gaps(df: pd.DataFrame, window_size: float, max_gap_num: int):
+    window_size_str = str(window_size) + 'S'
     windows = []
     i = 0
 
     start_time = None
 
-    for window in df.rolling(window=window_size, on='Timestamp'):
+    for window in df.rolling(window=window_size_str, on='Timestamp'):
         if len(window) == (len(window[window['Status'] == 'None']) + len(window[window['Status'] == 'Common gap'])):
             continue
 
@@ -154,7 +155,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     interval = timedelta(seconds=args.interval)
-    window_size = str(args.window_size) + 'S'
 
     df = pd.DataFrame()
 
@@ -169,7 +169,7 @@ if __name__ == '__main__':
 
     problems_by_sat = {}
     for sat in working_df['Satellite'].unique():
-        problems_by_sat[sat] = check_density_of_gaps(working_df[working_df['Satellite'] == sat], window_size, args.max_gap_num)
+        problems_by_sat[sat] = check_density_of_gaps(working_df[working_df['Satellite'] == sat], args.window_size, args.max_gap_num)
 
     if args.plot_show or not args.plot_file == None:
         create_debug_plot(working_df, problems_by_sat, interval, show=args.plot_show, filename=args.plot_file)
