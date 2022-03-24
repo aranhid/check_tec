@@ -13,8 +13,11 @@ def read_to_df(file: str, band_priority: MappingProxyType = BAND_PRIORITY):
     with open(file) as obs_file:
         reader = rnx(obs_file, band_priority=band_priority)
         for observables in reader:
+            sat = observables.satellite
+            if sat[1] == ' ':
+                sat = sat[0] + '0' + sat[2]
             data.append((
-                observables.satellite,
+                sat,
                 observables.timestamp,
             ))
 
