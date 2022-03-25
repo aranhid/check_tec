@@ -189,14 +189,19 @@ if __name__ == '__main__':
         temp_df = read_to_df(file)
         df = pd.concat([df, temp_df], ignore_index=True)
 
+    print('Find common gaps')
     common_gaps_df = find_common_gaps(df, interval)
-
+    print('Prepare dataframe')
     working_df = prepare_dataframe(df, common_gaps_df, interval)
+    print('Add elevations')
     working_df = add_elevations(working_df, args.nav_file, args.year, args.doy, args.cutoff)
+    print('Find problems by satellite')
     problems_by_sat = {}
     for sat in working_df['Satellite'].unique():
+        print(f'Process {sat}')
         problems_by_sat[sat] = check_density_of_gaps(working_df[working_df['Satellite'] == sat], interval, args.window_size, args.max_gap_num)
 
+    print('Create plot')
     if args.plot_show or not args.plot_file == None:
         create_debug_plot(working_df, problems_by_sat, interval, show=args.plot_show, filename=args.plot_file)
 
