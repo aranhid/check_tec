@@ -192,9 +192,7 @@ if __name__ == '__main__':
     common_gaps_df = find_common_gaps(df, interval)
 
     working_df = prepare_dataframe(df, common_gaps_df, interval)
-
-    if (args.nav_file):
-        working_df = add_elevations(working_df, args.nav_file, args.year, args.doy, args.cutoff)
+    working_df = add_elevations(working_df, args.nav_file, args.year, args.doy, args.cutoff)
     problems_by_sat = {}
     for sat in working_df['Satellite'].unique():
         problems_by_sat[sat] = check_density_of_gaps(working_df[working_df['Satellite'] == sat], interval, args.window_size, args.max_gap_num)
