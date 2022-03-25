@@ -165,12 +165,15 @@ def add_elevations(df: pd.DataFrame, xyz: list, nav_path: str, year: int, doy: i
     elevations_for_sat = get_elevations(nav_path, xyz, year, doy, cutoff)
 
     for sat in working_df['Satellite'].unique():
-        sat_df = working_df[working_df['Satellite'] == sat]
+        if sat in elevations_for_sat.keys():
+            sat_df = working_df[working_df['Satellite'] == sat]
 
-        elevation = list(elevations_for_sat[sat])
-        elevation = ['None' if math.isnan(el) else el for el in elevation]
+            elevation = list(elevations_for_sat[sat])
+            elevation = ['None' if math.isnan(el) else el for el in elevation]
 
-        working_df.loc[sat_df.index, 'Elevation'] = elevation
+            working_df.loc[sat_df.index, 'Elevation'] = elevation
+        else:
+            print(f'There is no satellite {sat} in elevations list')
     
     return working_df
 
