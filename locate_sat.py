@@ -14,6 +14,8 @@ sats = ['G' + str(i).zfill(2) for i in range(1, 33)]
 sats.extend(['R' + str(i).zfill(2) for i in range(1, 25)])
 sats.extend(['E' + str(i).zfill(2) for i in range(1, 37)])
 sats.extend(['C' + str(i).zfill(2) for i in range(1, 41)])
+sats.extend(['S' + str(i).zfill(2) for i in range(1, 41)])
+sats.extend(['J' + str(i).zfill(2) for i in range(1, 7)])
 sats_ind = {sat: i for i, sat in enumerate(sats)}
 ind_for_sat = {i: sat for sat, i in sats_ind.items()}
 system = ['G', 'R', 'E', 'C']
