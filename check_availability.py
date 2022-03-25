@@ -74,7 +74,8 @@ def prepare_dataframe(df: pd.DataFrame, common_gaps_df: pd.DataFrame, interval: 
     return ret_df
 
 
-def check_density_of_gaps(df: pd.DataFrame, window_size: float, max_gap_num: int):
+def check_density_of_gaps(df: pd.DataFrame, interval: timedelta, window_size: float, max_gap_num: int):
+    window_len = window_size // interval.total_seconds()
     window_size_str = str(window_size) + 'S'
     windows = []
     i = 0
@@ -82,6 +83,8 @@ def check_density_of_gaps(df: pd.DataFrame, window_size: float, max_gap_num: int
     times_with_elevation = df[df['Elevation'] != 'None']
     if len(times_with_elevation):
         for window in times_with_elevation.rolling(window=window_size_str, on='Timestamp'):
+            if len(window) < window_len:
+                continue
             gaps = window[window['Status'] == 'None']
             if len(gaps) > max_gap_num:
                 if not len(windows):
@@ -194,7 +197,7 @@ if __name__ == '__main__':
         working_df = add_elevations(working_df, args.nav_file, args.year, args.doy, args.cutoff)
     problems_by_sat = {}
     for sat in working_df['Satellite'].unique():
-        problems_by_sat[sat] = check_density_of_gaps(working_df[working_df['Satellite'] == sat], args.window_size, args.max_gap_num)
+        problems_by_sat[sat] = check_density_of_gaps(working_df[working_df['Satellite'] == sat], interval, args.window_size, args.max_gap_num)
 
     if args.plot_show or not args.plot_file == None:
         create_debug_plot(working_df, problems_by_sat, interval, show=args.plot_show, filename=args.plot_file)
