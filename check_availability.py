@@ -79,47 +79,19 @@ def check_density_of_gaps(df: pd.DataFrame, window_size: float, max_gap_num: int
     windows = []
     i = 0
 
-    start_time = None
-
-    for window in df.rolling(window=window_size_str, on='Timestamp'):
-        if len(window) == (len(window[window['Status'] == 'None']) + len(window[window['Status'] == 'Common gap'])):
-            continue
-
-        if len(window) > 1:
-            check_left = window.iloc[0 : len(window) // 2]
-            check_right = window.iloc[len(window) // 2 : len(window)]
-
-            # check end of session
-            if len(check_left[check_left['Status'] == 'Data']) and\
-            (len(check_right[check_right['Status'] == 'None']) + len(check_right[check_right['Status'] == 'Common gap'])) == len(window) // 2:
-                if len(windows) > i:
-                    windows[i].difference_update(window.index.to_pydatetime())
-                continue
-            # end check end of session
-
-            # check start of session
-            if window.iloc[-1]['Status'] == 'Data' and len(window[window['Status'] == 'Data']) == 1:
-                start_time = window.iloc[-1].name
-
-            if len(check_right[check_right['Status'] == 'Data']) and\
-            (len(check_left[check_left['Status'] == 'None']) + len(check_left[check_left['Status'] == 'Common gap'])) == len(window) // 2:
-                continue
-            #end check start of session
-        
-        gaps = window[window['Status'] == 'None']
-        if len(gaps) > max_gap_num:
-            if not len(windows) > 0:
-                windows.append(set())
-            if len(windows[i]) == 0 or gaps.index[0] in windows[i]:
-                windows[i].update(gaps.index.to_pydatetime())
-                if start_time:
-                    for val in list(windows[i]):
-                        if val < start_time:
-                            windows[i].discard(val)
-            else:
-                windows.append(set())
-                i += 1
-                windows[i].update(gaps.index.to_pydatetime())
+    times_with_elevation = df[df['Elevation'] != 'None']
+    if len(times_with_elevation):
+        for window in times_with_elevation.rolling(window=window_size_str, on='Timestamp'):
+            gaps = window[window['Status'] == 'None']
+            if len(gaps) > max_gap_num:
+                if not len(windows):
+                    windows.append(set())
+                if len(windows[i]) == 0 or gaps.index[0] in windows[i]:
+                    windows[i].update(gaps.index.to_pydatetime())
+                else:
+                    windows.append(set())
+                    i += 1
+                    windows[i].update(gaps.index.to_pydatetime())
 
     windows = [sorted(window) for window in windows]
     
