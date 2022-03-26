@@ -194,7 +194,7 @@ if __name__ == '__main__':
     print('Prepare dataframe')
     working_df = prepare_dataframe(df, common_gaps_df, interval)
     print('Add elevations')
-    working_df = add_elevations(working_df, args.nav_file, args.year, args.doy, args.cutoff)
+    working_df = add_elevations(working_df, xyz, args.nav_file, args.year, args.doy, args.cutoff)
     print('Find problems by satellite')
     problems_by_sat = {}
     for sat in working_df['Satellite'].unique():
