@@ -1,5 +1,6 @@
 import math
 import argparse
+from pprint import pprint
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -214,75 +215,83 @@ def devide_by_time(df):
     return ret
 
 
-def check_phase_tec(df: pd.DataFrame):
+def check_phase_tec(df: pd.DataFrame, std_mult: float = 1, show_plot: bool = False, save_plot: str = None):
     # считаем производную (дельты)
     # что делаем с пропусками - ???? (пока пропускаем)
     # по дельтам смотрим выбросы - определяем таким образом срыв фазы
     working_df = df[df['Phase tec'].notna()]
-    x = working_df['Timestamp']
+    x = working_df['Timestamp'].values
     y = working_df['Phase tec'].values
 
     y_diff = np.diff(y)
-    # std_y_diff = np.std(y_diff)
+    std_y_diff = np.std(y_diff)
 
-    x_range = range(0, len(x[1:]))
-    z = np.polyfit(x_range, y_diff, 1)
-    p = np.poly1d(z)
+    df_for_plot = pd.DataFrame(zip(x, y_diff), columns=('Timestamp', 'Phase tec'))
+    df_for_plot['Color'] = 'Green'
+    df_for_plot.loc[df_for_plot[df_for_plot['Phase tec'].abs() > std_y_diff * std_mult].index, 'Color'] = 'Red'
 
-    detrend_y_diff = y_diff - p(x_range)
-    std_y_diff = np.std(detrend_y_diff)
+    red_tec = df_for_plot[df_for_plot['Color'] == 'Red']
 
-    df_for_plot = pd.DataFrame(zip(x[1:], detrend_y_diff), columns=('x', 'y'))
+    ret = list(zip(red_tec['Timestamp'].values, red_tec['Phase tec'].values))
 
-    df_for_plot['color'] = 'Green'
-    df_for_plot.loc[df_for_plot[df_for_plot['y'].abs() > std_y_diff].index, 'color'] = 'Red'
+    if show_plot or save_plot:
+        fig, ax = plt.subplots(nrows=2, ncols=1)
+        fig.suptitle('Phase tec')
+        ax[0].scatter(x, y)  
+        ax[1].scatter(df_for_plot['Timestamp'], df_for_plot['Phase tec'], color=df_for_plot['Color'])
+        if show_plot:
+            plt.show()
+        if save_plot:
+            plt.savefig(save_plot)
 
-    fig, ax = plt.subplots(nrows=2, ncols=1)
-    fig.suptitle('Phase tec')
-    ax[0].scatter(x, y)  
-    ax[1].scatter(df_for_plot.x, df_for_plot.y, color=df_for_plot.color)
-    plt.show()
+    return ret
 
 
-def check_range_tec(df: pd.DataFrame, poli_degree: int = 1):
+def check_range_tec(df: pd.DataFrame, poli_degree: int = 1, std_mult: float = 1, show_plot: bool = False, save_plot: str = None):
     # заполняем пропуски средними значениями
     # удаляем тренд
     # проверяем СКО
-    work_df = df
-    x = work_df["Timestamp"]
-    yr = work_df["P range tec"].values
+    x = df["Timestamp"].values
+    yr = df["P range tec"].values
 
     mean_yr = np.nanmean(yr)
-
     yr = [mean_yr if np.isnan(y) else y for y in yr ]
 
     x_range = range(0, len(x))
     z = np.polyfit(x_range, yr, poli_degree)
     p = np.poly1d(z)
 
-    new_yr = yr - p(x_range)
-    std_yr = np.std(new_yr)
+    detrended_yr = yr - p(x_range)
+    std_yr = np.std(detrended_yr)
 
-    df_for_plot = pd.DataFrame(zip(x, new_yr), columns=('x', 'y'))
-    print(df_for_plot)
+    df_for_plot = pd.DataFrame(zip(x, detrended_yr), columns=('Timestamp', 'P range tec'))
 
-    df_for_plot['color'] = 'Green'
-    df_for_plot.loc[df_for_plot[df_for_plot['y'].abs() > std_yr].index, 'color'] = 'Red'
+    df_for_plot['Color'] = 'Green'
+    df_for_plot.loc[df_for_plot[df_for_plot['P range tec'].abs() > std_yr * std_mult].index, 'Color'] = 'Red'
 
-    print(df_for_plot)
-    
-    fig, ax = plt.subplots(nrows=2, ncols=1)
-    fig.suptitle('P range tec')
-    ax[0].scatter(x, yr)
-    ax[0].plot(x ,p(x_range),"r--")    
-    ax[1].scatter(df_for_plot.x, df_for_plot.y, color=df_for_plot.color)
-    plt.show()
+    red_tec = df_for_plot[df_for_plot['Color'] == 'Red']
+    ret = list(zip(red_tec['Timestamp'].values, red_tec['P range tec'].values))
+
+    if show_plot or save_plot:    
+        fig, ax = plt.subplots(nrows=2, ncols=1)
+        fig.suptitle('P range tec')
+        ax[0].scatter(x, yr)
+        ax[0].plot(x, p(x_range), "r--")    
+        ax[1].scatter(df_for_plot['Timestamp'], df_for_plot['P range tec'], color=df_for_plot['Color'])
+        if show_plot:
+            plt.show()
+        if save_plot:
+            plt.savefig(save_plot)
+
+    return ret
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--files', type=str, nargs='+', help='path to RINEX file')
     parser.add_argument('--interval', type=float, help='interval of RINEX file, in seconds')
+    parser.add_argument('--poli-degree', type=int, help='degree of the fitting polynomial')
+    parser.add_argument('--std-mult', type=int, help='multiplier of standard deviation')
     parser.add_argument('--nav-file', type=str, help='path to NAV file')
     parser.add_argument('--year', type=int, help='Year like 2022')
     parser.add_argument('--doy', type=int, help='Day of year like 103')
@@ -308,16 +317,24 @@ if __name__ == '__main__':
 
     # working_df = calculate_combinations(working_df)
 
-    sat_df = working_df[working_df["Satellite"] == "G25"]
-    devided_dfs = devide_by_time(sat_df)
+    # sat_df = working_df[working_df["Satellite"] == "G25"]
+    # devided_dfs = devide_by_time(sat_df)
 
-    for part in devided_dfs:
-        check_range_tec(df=part, poli_degree=20)
-        # check_phase_tec(df=part)
+    # for part in devided_dfs:
+    #     # check_range_tec(df=part, poli_degree=20)
+    #     check_phase_tec(df=part, std_mult=2)
 
-    # for sat in working_df['Satellite'].unique():
-    #     sat_df = working_df[working_df["Satellite"] == sat]
-    #     devided_sat_df = devide_by_time(sat_df)
-    #     for part in devided_sat_df:
-    #         check_range_tec(df=part, poli_degree=20)
-    #         check_phase_tec(df=part)
+    phase_tec_problem_by_sat = {}
+    range_tec_problem_by_sat = {}
+
+    for sat in working_df['Satellite'].unique():
+        sat_df = working_df[working_df["Satellite"] == sat]
+        devided_sat_df = devide_by_time(sat_df)
+        range_tec_problem_by_sat[sat] = []
+        phase_tec_problem_by_sat[sat] = []
+        for part in devided_sat_df:
+            range_tec_problem_by_sat[sat].append(check_range_tec(df=part, poli_degree=args.poli_degree, std_mult=args.std_mult))
+            phase_tec_problem_by_sat[sat].append(check_phase_tec(df=part, std_mult=args.std_mult))
+
+    # pprint(phase_tec_problem_by_sat)
+    # pprint(range_tec_problem_by_sat)
