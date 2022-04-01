@@ -21,6 +21,7 @@ def calculate_combinations(df):
     R_PW_list = []
     Phi_LN_list = []
     R_PN_list = []
+    
     for index, row in df.iterrows():
         sat = row["Satellite"][0]
         f1 = gnss.FREQUENCY.get(sat).get(int(row["Phase code"].get(1)[1]))
@@ -122,14 +123,6 @@ def prepare_dataframe(df: pd.DataFrame, common_gaps_df: pd.DataFrame, interval: 
     prototype_df = pd.DataFrame(
         pd.date_range(start=all_available_times[0], end=all_available_times[-1], freq=frequency),
         columns=("Timestamp",))
-    # prototype_df['Status'] = 'None'
-
-    # for index in common_gaps_df.index:
-    #     gap_start = common_gaps_df.loc[index]['Timestamp']
-    #     gap_end = common_gaps_df.loc[index]['Timestamp'] + common_gaps_df.loc[index]['Duration']
-    #     gaps_df = prototype_df[prototype_df['Timestamp'] >= gap_start]
-    #     gaps_df = gaps_df[gaps_df['Timestamp'] < gap_end]
-    #     prototype_df.loc[gaps_df.index, 'Status'] = 'Common gap'
 
     ret_df = pd.DataFrame()
 
@@ -139,18 +132,13 @@ def prepare_dataframe(df: pd.DataFrame, common_gaps_df: pd.DataFrame, interval: 
         sat_df = df[df['Satellite'] == sat]
         sat_df_copy = sat_df.copy()
         sat_df_copy = sat_df_copy.set_index('Timestamp')
-        # sat_df_copy['Status'] = 'Data'
-        # print(sat_df_copy)
+
         prototype_df_copy = prototype_df.copy()
         prototype_df_copy = prototype_df_copy.set_index('Timestamp')
         prototype_df_copy = prototype_df_copy.combine_first(sat_df_copy)
-        # print(prototype_df_copy)
         prototype_df_copy['Satellite'] = sat
         prototype_df_copy = prototype_df_copy.reset_index()
-        # prototype_df_copy.to_csv("prototype.csv")
-        # prototype_df_copy['isin'] = prototype_df_copy['Timestamp'].isin(sat_df['Timestamp'])
-        # prototype_df_copy.loc[prototype_df_copy[prototype_df_copy['P range'].notnull()].index, 'Status'] = 'Data'
-        # prototype_df_copy = prototype_df_copy.drop(columns=['isin',])
+
         ret_df = pd.concat([ret_df, prototype_df_copy], ignore_index=True)
 
     return ret_df
@@ -165,14 +153,8 @@ def add_elevations(df: pd.DataFrame, xyz: list, nav_path: str, year: int, doy: i
     for sat in working_df['Satellite'].unique():
         if sat in elevations_for_sat.keys():
             sat_df = working_df[working_df['Satellite'] == sat]
-
             elevation = list(elevations_for_sat[sat])
-            # elevation = ['None' if math.isnan(el) else el for el in elevation]
-
             working_df.loc[sat_df.index, 'Elevation'] = elevation
-            # print(working_df[working_df['Elevation'] != 'None'])
-            # test = working_df[working_df['Satellite'] == sat]
-            # test.to_csv(f'{sat}.csv')
         else:
             print(f'There is no satellite {sat} in elevations list')
     
@@ -187,7 +169,6 @@ def get_xyz(file: str):
                 splited = line.split()
                 xyz = splited[0:3]
                 xyz = list(map(float, xyz))
-                print(splited)
                 return xyz
 
 
@@ -195,9 +176,7 @@ def devide_by_time(df):
     working_df = df[df['Elevation'].notna()]
     diff = working_df["Timestamp"].diff()
     
-    borders = diff[diff > pd.Timedelta(30, 'min')]
-    print(borders)
-
+    borders = diff[diff > pd.Timedelta(60, 'min')]
     borders_indexes = borders.index
 
     ret = []
@@ -347,15 +326,6 @@ if __name__ == '__main__':
     working_df = prepare_dataframe(df, common_gaps_df, interval)
     print('Add elevations')
     working_df = add_elevations(working_df, xyz, args.nav_file, args.year, args.doy, args.cutoff)
-
-    # working_df = calculate_combinations(working_df)
-
-    # sat_df = working_df[working_df["Satellite"] == "G25"]
-    # devided_dfs = devide_by_time(sat_df)
-
-    # for part in devided_dfs:
-    #     # check_range_tec(df=part, poli_degree=20)
-    #     check_phase_tec(df=part, std_mult=2)
 
     print('Find problems by satellite')
     phase_tec_problem_by_sat = {}
