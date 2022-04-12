@@ -1,15 +1,13 @@
 import os
-import math
 import argparse
 from pprint import pprint
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from types import MappingProxyType
-from datetime import datetime, timedelta
-from gnss_tec import rnx, gnss, BAND_PRIORITY
+from datetime import timedelta
+from gnss_tec import gnss
 
-from locate_sat import get_elevations
+from reader import get_dataframe
 
 
 def calculate_combinations(df):
@@ -21,7 +19,7 @@ def calculate_combinations(df):
     R_PW_list = []
     Phi_LN_list = []
     R_PN_list = []
-    
+
     for index, row in df.iterrows():
         sat = row["Satellite"][0]
         f1 = gnss.FREQUENCY.get(sat).get(int(row["Phase code"].get(1)[1]))
@@ -69,107 +67,11 @@ def calculate_combinations(df):
                      R_PN = R_PN_list)
 
 
-def read_to_df(file: str, band_priority: MappingProxyType = BAND_PRIORITY):
-    data = []
-
-    with open(file) as obs_file:
-        reader = rnx(obs_file, band_priority=band_priority)
-        for observables in reader:
-            sat = observables.satellite
-            if sat[1] == ' ':
-                sat = sat[0] + '0' + sat[2]
-            data.append((
-                sat,
-                observables.timestamp,
-                observables.phase_code,
-                observables.phase,
-                observables.phase_tec,
-                observables.p_range_code,
-                observables.p_range,
-                observables.p_range_tec,
-            ))
-
-    df = pd.DataFrame(data, columns=("Satellite", "Timestamp", "Phase code", "Phase", "Phase tec", "P range code", "P range", "P range tec"))
-
-    return df
-
-
 def get_windows(data, window, step):
     win = np.arange(window)[None, :]
     shift = np.arange(0, data.shape[0] - win[0][-1], step)[:, None]
     indexer = win + shift
     return indexer
-
-
-def find_common_gaps(df: pd.DataFrame, interval: timedelta):
-    all_available_times = df['Timestamp'].unique()
-    all_available_times = sorted(all_available_times)
-    all_available_times = pd.DataFrame(list(all_available_times), columns=('Timestamp',))
-    all_available_times['Duration'] = all_available_times.diff()
-    common_gaps = all_available_times[all_available_times['Duration'] > interval].copy()
-
-    common_gaps['Duration'] = common_gaps['Duration'] - interval
-    common_gaps['Timestamp'] = common_gaps['Timestamp'] - common_gaps['Duration']
-
-    common_gaps = common_gaps.reset_index(drop=True)
-
-    return common_gaps
-
-
-def prepare_dataframe(df: pd.DataFrame, common_gaps_df: pd.DataFrame, interval: timedelta):
-    all_available_times = df['Timestamp'].unique()
-    all_available_times.sort()
-    frequency = str(interval.seconds) + 'S'
-    prototype_df = pd.DataFrame(
-        pd.date_range(start=all_available_times[0], end=all_available_times[-1], freq=frequency),
-        columns=("Timestamp",))
-
-    ret_df = pd.DataFrame()
-
-    sats = df['Satellite'].unique()
-    sats.sort()
-    for sat in sats:
-        sat_df = df[df['Satellite'] == sat]
-        sat_df_copy = sat_df.copy()
-        sat_df_copy = sat_df_copy.set_index('Timestamp')
-
-        prototype_df_copy = prototype_df.copy()
-        prototype_df_copy = prototype_df_copy.set_index('Timestamp')
-        prototype_df_copy = prototype_df_copy.combine_first(sat_df_copy)
-        prototype_df_copy['Satellite'] = sat
-        prototype_df_copy = prototype_df_copy.reset_index()
-
-        ret_df = pd.concat([ret_df, prototype_df_copy], ignore_index=True)
-
-    return ret_df
-
-
-def add_elevations(df: pd.DataFrame, xyz: list, nav_path: str, year: int, doy: int, cutoff: float):
-    working_df = df.copy()
-    working_df['Elevation'] = 'None'
-
-    elevations_for_sat = get_elevations(nav_path, xyz, year, doy, cutoff)
-
-    for sat in working_df['Satellite'].unique():
-        if sat in elevations_for_sat.keys():
-            sat_df = working_df[working_df['Satellite'] == sat]
-            elevation = list(elevations_for_sat[sat])
-            working_df.loc[sat_df.index, 'Elevation'] = elevation
-        else:
-            print(f'There is no satellite {sat} in elevations list')
-    
-    return working_df
-
-
-def get_xyz(file: str):
-    with open(file, 'r') as f:
-        for i in range(30):
-            line = f.readline()
-            if 'APPROX POSITION XYZ' in line:
-                splited = line.split()
-                xyz = splited[0:3]
-                xyz = list(map(float, xyz))
-                return xyz
 
 
 def devide_by_time(df):
@@ -305,27 +207,12 @@ if __name__ == '__main__':
     parser.add_argument('--plot-show', action='store_true', help='show plot')
     parser.add_argument('--plot-dir', type=str, default=None, help='path to dir to save plot images')
     parser.add_argument('--nav-file', type=str, help='path to NAV file')
-    parser.add_argument('--year', type=int, help='Year like 2022')
-    parser.add_argument('--doy', type=int, help='Day of year like 103')
     parser.add_argument('--cutoff', type=float, help='Cutoff for elevation')
     args = parser.parse_args()
 
     interval = timedelta(seconds=args.interval)
 
-    df = pd.DataFrame()
-    xyz = get_xyz(args.files[0])
-
-    for file in args.files:
-        print(f'Read {file}')
-        temp_df = read_to_df(file)
-        df = pd.concat([df, temp_df], ignore_index=True)
-
-    print('Find common gaps')
-    common_gaps_df = find_common_gaps(df, interval)
-    print('Prepare dataframe')
-    working_df = prepare_dataframe(df, common_gaps_df, interval)
-    print('Add elevations')
-    working_df = add_elevations(working_df, xyz, args.nav_file, args.year, args.doy, args.cutoff)
+    common_gaps_df, working_df = get_dataframe(args.files, interval, args.nav_file, args.cutoff)
 
     print('Find problems by satellite')
     phase_tec_problem_by_sat = {}
