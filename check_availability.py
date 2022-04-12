@@ -133,11 +133,13 @@ def create_debug_plot(df: pd.DataFrame, problems_by_sat: dict, interval: timedel
         fig.write_image(filename, width=1920, height=1080)
 
 
-def add_elevations(df: pd.DataFrame, xyz: list, nav_path: str, year: int, doy: int, cutoff: float):
+def add_elevations(df: pd.DataFrame, interval: timedelta, xyz: list, nav_path: str, cutoff: float):
     working_df = df.copy()
+    start_date = pd.to_datetime(working_df['Timestamp'].unique()[0]).to_pydatetime()
+    end_date = pd.to_datetime(working_df['Timestamp'].unique()[-1]).to_pydatetime()
     working_df['Elevation'] = 'None'
 
-    elevations_for_sat = get_elevations(nav_path, xyz, year, doy, cutoff)
+    elevations_for_sat = get_elevations(nav_path, xyz, start_date, end_date, interval, cutoff)
 
     for sat in working_df['Satellite'].unique():
         if sat in elevations_for_sat.keys():
@@ -174,8 +176,6 @@ if __name__ == '__main__':
     parser.add_argument('--plot-show', action='store_true', help='show plot')
     parser.add_argument('--plot-file', type=str, default=None, help='path for plot image')
     parser.add_argument('--nav-file', type=str, help='path to NAV file')
-    parser.add_argument('--year', type=int, help='Year like 2022')
-    parser.add_argument('--doy', type=int, help='Day of year like 103')
     parser.add_argument('--cutoff', type=float, help='Cutoff for elevation')
     args = parser.parse_args()
 
@@ -194,7 +194,7 @@ if __name__ == '__main__':
     print('Prepare dataframe')
     working_df = prepare_dataframe(df, common_gaps_df, interval)
     print('Add elevations')
-    working_df = add_elevations(working_df, xyz, args.nav_file, args.year, args.doy, args.cutoff)
+    working_df = add_elevations(working_df, interval, xyz, args.nav_file, args.cutoff)
     print('Find problems by satellite')
     problems_by_sat = {}
     for sat in working_df['Satellite'].unique():

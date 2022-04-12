@@ -44,9 +44,11 @@ def get_sat_pos(timestamp, satellite, navs):
 
     return satellite_xyz(nav_file, gnss_type, sat_num, timestamp)
 
-def locate_sat(navs, date, hours=24, tstep=timedelta(0, 30)):
-    assert hours <=24
-    tdim = int(timedelta(0, 3600) / tstep *hours)
+def locate_sat(navs, start_date, end_date, interval=timedelta(seconds=30)):
+    td = end_date - start_date
+    assert td.total_seconds() // 3600 <= 24
+    tdim = int(td / interval) + 1
+    date = start_date
     satdim = len(sats)
     xyz = np.zeros((tdim, satdim, 3))
     times = []
@@ -59,7 +61,7 @@ def locate_sat(navs, date, hours=24, tstep=timedelta(0, 30)):
                 #print(f'{sat} has no records for {date}')
         # print(f'Finished {date}')
         times.append(date)
-        date = date + tstep
+        date = date + interval
     return xyz, times
 
 def get_elaz(xyz, locs):
@@ -79,10 +81,9 @@ def get_elaz(xyz, locs):
     return elaz
 
 
-def get_elevations(nav, receiver_xyz, year, doy, cutoff):
+def get_elevations(nav, receiver_xyz, start_date, end_date, interval, cutoff):
     navs = {'rinex3': str(nav)}
-    date = datetime(int(year), 1, 1) + timedelta(int(doy) - 1)
-    xyz, times = locate_sat(navs, date)
+    xyz, times = locate_sat(navs, start_date, end_date, interval)
     lle = cart_to_lle(*receiver_xyz)
     elaz = get_elaz(xyz, lle)
     location = 0
