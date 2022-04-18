@@ -4,18 +4,7 @@ from gnss_tec import rnx, BAND_PRIORITY
 from datetime import timedelta
 
 from locate_sat import get_elevations
-
-
-def get_xyz(file: str):
-    with open(file, 'r') as f:
-        for i in range(30):
-            line = f.readline()
-            if 'APPROX POSITION XYZ' in line:
-                splited = line.split()
-                xyz = splited[0:3]
-                xyz = list(map(float, xyz))
-                print(splited)
-                return xyz
+from coordinates import retrieve_xyz
 
 
 def read_to_df(file: str, band_priority: MappingProxyType = BAND_PRIORITY):
@@ -119,7 +108,7 @@ def add_elevations(df: pd.DataFrame, interval: timedelta, xyz: list, nav_path: s
 
 def get_dataframe(files, interval, nav_file, cutoff):
     df = pd.DataFrame()
-    xyz = get_xyz(files[0])
+    xyz = retrieve_xyz(files[0])
 
     for file in files:
         print(f'Read {file}')
