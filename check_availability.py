@@ -74,7 +74,7 @@ if __name__ == '__main__':
     parser.add_argument('--max-gap-num', type=int, help='maximum number of gaps in the rolling window')
     parser.add_argument('--plot-show', action='store_true', help='show plot')
     parser.add_argument('--plot-file', type=str, default=None, help='path for plot image')
-    parser.add_argument('--nav-file', type=str, help='path to NAV file')
+    parser.add_argument('--nav-file', type=str, default=None, help='path to NAV file')
     parser.add_argument('--cutoff', type=float, help='Cutoff for elevation')
     args = parser.parse_args()
 
@@ -82,11 +82,12 @@ if __name__ == '__main__':
 
     common_gaps_df, working_df = get_dataframe(args.files, interval, args.nav_file, args.cutoff)
 
-    print('Find problems by satellite')
     problems_by_sat = {}
-    for sat in working_df['Satellite'].unique():
-        print(f'Process {sat}')
-        problems_by_sat[sat] = check_density_of_gaps(working_df[working_df['Satellite'] == sat], interval, args.window_size, args.max_gap_num)
+    if args.nav_file:
+        print('Find problems by satellite')
+        for sat in working_df['Satellite'].unique():
+            print(f'Process {sat}')
+            problems_by_sat[sat] = check_density_of_gaps(working_df[working_df['Satellite'] == sat], interval, args.window_size, args.max_gap_num)
 
     print('Create plot')
     if args.plot_show or not args.plot_file == None:
