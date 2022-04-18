@@ -45,9 +45,9 @@ def get_sat_pos(timestamp, satellite, navs):
     return satellite_xyz(nav_file, gnss_type, sat_num, timestamp)
 
 def locate_sat(navs, start_date, end_date, interval=timedelta(seconds=30)):
-    td = end_date - start_date
+    td = end_date - start_date + interval
     assert td.total_seconds() // 3600 <= 24
-    tdim = int(td / interval) + 1
+    tdim = int(td / interval)
     date = start_date
     satdim = len(sats)
     xyz = np.zeros((tdim, satdim, 3))
