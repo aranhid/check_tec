@@ -119,7 +119,8 @@ def get_dataframe(files, interval, nav_file, cutoff):
     common_gaps_df = find_common_gaps(df, interval)
     print('Prepare dataframe')
     working_df = prepare_dataframe(df, common_gaps_df, interval)
-    print('Add elevations')
-    working_df = add_elevations(working_df, interval, xyz, nav_file, cutoff)
+    if nav_file:
+        print('Add elevations')
+        working_df = add_elevations(working_df, interval, xyz, nav_file, cutoff)
 
     return common_gaps_df, working_df
