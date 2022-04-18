@@ -88,8 +88,10 @@ def prepare_dataframe(df: pd.DataFrame, common_gaps_df: pd.DataFrame, interval: 
 
 def add_elevations(df: pd.DataFrame, interval: timedelta, xyz: list, nav_path: str, cutoff: float):
     working_df = df.copy()
-    start_date = pd.to_datetime(working_df['Timestamp'].unique()[0]).to_pydatetime()
-    end_date = pd.to_datetime(working_df['Timestamp'].unique()[-1]).to_pydatetime()
+    dates = pd.to_datetime(working_df['Timestamp'].unique())
+    dates = sorted(dates)
+    start_date = dates[0].to_pydatetime()
+    end_date = dates[-1].to_pydatetime()
     working_df['Elevation'] = None
 
 
