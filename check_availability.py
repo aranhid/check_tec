@@ -50,7 +50,6 @@ def create_simple_plot(df: pd.DataFrame, interval: timedelta):
 def create_debug_plot(df: pd.DataFrame, problems_by_sat: dict, interval: timedelta, filename: str = None, show: bool = False):
     work_df = df.copy()
     work_df['Timestamp end'] = work_df['Timestamp'] + interval
-    work_df.loc[work_df[work_df['Elevation'].isna()].index, 'Elevation'] = 'None'
 
     for sat in problems_by_sat.keys():
         for problem in problems_by_sat[sat]:
