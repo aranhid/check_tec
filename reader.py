@@ -101,7 +101,10 @@ def add_elevations(df: pd.DataFrame, interval: timedelta, xyz: list, nav_path: s
         if sat in elevations_for_sat.keys():
             sat_df = working_df[working_df['Satellite'] == sat]
             elevation = list(elevations_for_sat[sat])
-            working_df.loc[sat_df.index, 'Elevation'] = elevation
+            if len(elevation) == len(sat_df):
+                working_df.loc[sat_df.index, 'Elevation'] = elevation
+            else:
+                print('len(elevation) != len(working_df)')
         else:
             print(f'There is no satellite {sat} in elevations list')
     
