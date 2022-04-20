@@ -203,7 +203,8 @@ if __name__ == '__main__':
     parser.add_argument('--files', type=str, nargs='+', help='path to RINEX file')
     parser.add_argument('--interval', type=float, help='interval of RINEX file, in seconds')
     parser.add_argument('--poli-degree', type=int, help='degree of the fitting polynomial')
-    parser.add_argument('--std-mult', type=int, help='multiplier of standard deviation')
+    parser.add_argument('--std-mult-range', type=int, help='multiplier of standard deviation for range TEC')
+    parser.add_argument('--std-mult-phase', type=int, help='multiplier of standard deviation for phase TEC')
     parser.add_argument('--plot-show', action='store_true', help='show plot')
     parser.add_argument('--plot-dir', type=str, default=None, help='path to dir to save plot images')
     parser.add_argument('--nav-file', type=str, help='path to NAV file')
@@ -222,11 +223,11 @@ if __name__ == '__main__':
         print(f'Process {sat}')
         sat_df = working_df[working_df["Satellite"] == sat]
         devided_sat_df = devide_by_time(sat_df)
-        range_tec_problem_by_sat[sat] = []
         phase_tec_problem_by_sat[sat] = []
+        range_tec_problem_by_sat[sat] = []
         for index, part in enumerate(devided_sat_df):
-            range_tec_problem_by_sat[sat].append(check_range_tec(df=part, poli_degree=args.poli_degree, std_mult=args.std_mult))
-            phase_tec_problem_by_sat[sat].append(check_phase_tec(df=part, std_mult=args.std_mult))
+            phase_tec_problem_by_sat[sat].append(check_phase_tec(df=part, std_mult=args.std_mult_phase))
+            range_tec_problem_by_sat[sat].append(check_range_tec(df=part, poli_degree=args.poli_degree, std_mult=args.std_mult_range))
 
             if args.plot_show or args.plot_dir:
                 phase_tec_file = None
@@ -234,8 +235,8 @@ if __name__ == '__main__':
                 if args.plot_dir:
                     phase_tec_file = os.path.join(args.plot_dir, f"{sat}_phase_tec_{index}.png")
                     range_tec_file = os.path.join(args.plot_dir, f"{sat}_range_tec_{index}.png")
-                plot_check_phase_tec(df=part, std_mult=args.std_mult, sat=sat, show_plot=args.plot_show, save_plot=phase_tec_file)
-                plot_check_range_tec(df=part, poli_degree=args.poli_degree, std_mult=args.std_mult, sat=sat, show_plot=args.plot_show, save_plot=range_tec_file)
+                plot_check_phase_tec(df=part, std_mult=args.std_mult_phase, sat=sat, show_plot=args.plot_show, save_plot=phase_tec_file)
+                plot_check_range_tec(df=part, poli_degree=args.poli_degree, std_mult=args.std_mult_range, sat=sat, show_plot=args.plot_show, save_plot=range_tec_file)
 
     # pprint(phase_tec_problem_by_sat)
     # pprint(range_tec_problem_by_sat)
