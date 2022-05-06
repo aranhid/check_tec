@@ -296,12 +296,12 @@ def plot_check_range_tec(df: pd.DataFrame, poli_degree: int = 1, std_mult: float
             # std = np.mean([win_std, all_std])
             std = win_std
             problems = check_win[check_win['P range tec'].abs() > std * std_mult]
-            print(window)
-            print(problems)
-            print(std)
+            # print(window)
+            # print(problems)
+            # print(std)
             df_for_win.loc[problems.index, 'Color'] = 'red'
-            print(df_for_win.loc[problems.index])
-            print(" ")
+            # print(df_for_win.loc[problems.index])
+            # print(" ")
 
     print("Plot range tec")
     fig, ax = plt.subplots(nrows=3, ncols=1)
