@@ -54,7 +54,7 @@ for dir in dirs:
                 files_to_check.append(os.path.join(new_path, file))
 
     plot_dir = os.path.join(new_path, 'tec')
-    my_arg = f'{sys.executable} check_tec.py --files {path} --interval {interval} --poli-degree {poli_degree} --std-mult-range {std_mult_range} --std-mult-phase {std_mult_phase} --plot-dir {plot_dir} --nav-file {nav_file} --cutoff {cutoff}'
+    my_arg = f'{sys.executable} check_tec.py --files {" ".join(files_to_check)} --interval {interval} --poli-degree {poli_degree} --std-mult-range {std_mult_range} --std-mult-phase {std_mult_phase} --plot-dir {plot_dir} --nav-file {nav_file} --cutoff {cutoff}'
 
     cmd = shlex.split(my_arg, posix=False)
     process = subprocess.run(cmd)
