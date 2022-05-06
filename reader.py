@@ -111,7 +111,7 @@ def add_elevations(df: pd.DataFrame, interval: timedelta, xyz: list, nav_path: s
     return working_df
 
 
-def get_dataframe(files, interval, nav_file, cutoff):
+def get_dataframe(files: list, interval: timedelta, nav_file: str = None, cutoff: float = None):
     df = pd.DataFrame()
     xyz = retrieve_xyz(files[0])
 
