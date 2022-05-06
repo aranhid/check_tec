@@ -372,6 +372,8 @@ if __name__ == '__main__':
                     phase_tec_file = None
                     range_tec_file = None
                     if args.plot_dir:
+                        if not os.path.exists(args.plot_dir):
+                            os.makedirs(args.plot_dir)
                         phase_tec_file = os.path.join(args.plot_dir, f"{sat}_phase_tec_{index}.png")
                         range_tec_file = os.path.join(args.plot_dir, f"{sat}_range_tec_{index}.png")
                     plot_check_phase_tec(df=part, std_mult=args.std_mult_phase, sat=sat, show_plot=args.plot_show, save_plot=phase_tec_file)
