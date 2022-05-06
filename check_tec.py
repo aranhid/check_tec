@@ -9,6 +9,9 @@ from gnss_tec import gnss
 
 from reader import get_dataframe
 
+import logging
+logging.getLogger('PIL').setLevel(logging.WARNING)
+
 
 def calculate_combinations(df):
     Phi_LC_list = []
@@ -101,16 +104,29 @@ def check_phase_tec(df: pd.DataFrame, std_mult: float = 1):
     # считаем производную (дельты)
     # что делаем с пропусками - ???? (пока пропускаем)
     # по дельтам смотрим выбросы - определяем таким образом срыв фазы
+
+    # попробовать смотреть отклонения при разнице > 1
+
     working_df = df[df['Phase tec'].notna()]
+    if len(working_df) == 0:
+        return []
     x = working_df['Timestamp'].values
     y = working_df['Phase tec'].values
-
+    if len(x) <= 2 and len(y) <= 2:
+        return []
     y_diff = np.diff(y)
-    std_y_diff = np.std(y_diff)
 
-    df_for_plot = pd.DataFrame(zip(x, y_diff), columns=('Timestamp', 'Phase tec'))
+    x_range = range(0, len(x[:-1]))
+    z = np.polyfit(x_range, y_diff, 3)
+    p = np.poly1d(z)
+
+    detrend_y_diff = y_diff - p(x_range)
+    std_y_diff = np.std(detrend_y_diff)
+
+    df_for_plot = pd.DataFrame(zip(x[:-1], detrend_y_diff), columns=('Timestamp', 'Phase tec'))
     df_for_plot['Color'] = 'Green'
-    df_for_plot.loc[df_for_plot[df_for_plot['Phase tec'].abs() > std_y_diff * std_mult].index, 'Color'] = 'Red'
+    # df_for_plot.loc[df_for_plot[df_for_plot['Phase tec'].abs() > std_y_diff * std_mult].index, 'Color'] = 'Red'
+    df_for_plot.loc[df_for_plot[df_for_plot['Phase tec'].abs() > 1.0].index, 'Color'] = 'Red'
 
     red_tec = df_for_plot[df_for_plot['Color'] == 'Red']
     ret = list(zip(red_tec['Timestamp'].values, red_tec['Phase tec'].values))
@@ -118,26 +134,97 @@ def check_phase_tec(df: pd.DataFrame, std_mult: float = 1):
     return ret
 
 
-def plot_check_phase_tec(df: pd.DataFrame, std_mult: float = 1, sat: str = '', show_plot: bool = False, save_plot: str = None):
+def plot_check_phase_tec(df: pd.DataFrame, std_mult: float = 1, poli_degree: int = 7, rate: float = 0.035, sat: str = '', show_plot: bool = False, save_plot: str = None):
     working_df = df[df['Phase tec'].notna()]
+    if len(working_df) == 0:
+        return []
     x = working_df['Timestamp'].values
     y = working_df['Phase tec'].values
+    el = working_df['Elevation'].values
 
+    x_diff = np.diff(x)
+    x_diff = x_diff / np.timedelta64(1, 's')
     y_diff = np.diff(y)
-    std_y_diff = np.std(y_diff)
 
-    df_for_plot = pd.DataFrame(zip(x, y_diff), columns=('Timestamp', 'Phase tec'))
-    df_for_plot['Color'] = 'Green'
-    df_for_plot.loc[df_for_plot[df_for_plot['Phase tec'].abs() > std_y_diff * std_mult].index, 'Color'] = 'Red'
+    tec_diff_by_sec = y_diff / x_diff
 
-    fig, ax = plt.subplots(nrows=2, ncols=1)
-    fig.suptitle(f'{sat} Phase tec')
-    ax[0].scatter(x, y)  
-    ax[1].scatter(df_for_plot['Timestamp'], df_for_plot['Phase tec'], color=df_for_plot['Color'])
+    y_diff = tec_diff_by_sec
+
+    if len(y_diff) <= 2:
+        return []
+
+    x_range = list(range(0, len(x[1:])))
+    z = np.polyfit(x_range, y_diff, poli_degree)
+    p = np.poly1d(z)
+
+    detrend_y_diff = y_diff - p(x_range)
+    std_y_diff = np.std(detrend_y_diff)
+
+    df_for_plot = pd.DataFrame(zip(x[1:], detrend_y_diff), columns=('Timestamp', 'Phase tec'))
+    df_for_plot['Color'] = 'green'
+    red_dots = df_for_plot[df_for_plot['Phase tec'].abs() > std_y_diff * std_mult]
+    red_dots = red_dots[red_dots['Phase tec'].abs() > rate]
+    df_for_plot.loc[red_dots.index, 'Color'] = 'red'
+
+    df_for_win = pd.DataFrame(zip(x[1:], detrend_y_diff), columns=('Timestamp', 'Phase tec'))
+    df_for_win['Color'] = 'green'
+
+    min_win_size = 20
+    max_win_size = 120
+    for window in df_for_win.rolling(window=max_win_size):
+        if (min_win_size <= len(window) <= max_win_size):
+        # if len(window) > 2:
+            # print(window)
+            check_win = df_for_win.loc[window.index]
+            check_win = check_win[check_win['Color'] != 'red']
+            # check_win = window
+            win_std = check_win['Phase tec'].std()
+            all_std = df_for_win[df_for_win['Phase tec'] != 'red']['Phase tec'].std()
+            # print(win_std, all_std)
+            # std = np.mean([win_std, all_std])
+            std = win_std
+            problems = check_win[check_win['Phase tec'].abs() > std * std_mult]
+            problems = problems[problems['Phase tec'].abs() > rate]
+            # print(problems)
+            df_for_win.loc[problems.index, 'Color'] = 'red'
+
+    # print(df_for_win)
+
+    print('Plot phase tec')
+    fig, ax = plt.subplots(nrows=4, ncols=1)
+    fig.suptitle(f'{sat} Phase TEC')
+    
+    ax[0].set_xlabel('Time')
+    ax[0].set_ylabel('TECu')
+    ax[0].scatter(x, y, color='tab:blue')
+    ax[0].tick_params(axis='y', labelcolor='tab:blue')
+    ax[0].xaxis.set_tick_params(labelsize=5)
+
+    ax01 = ax[0].twinx()
+    ax01.set_ylabel('Elevation')
+    ax01.plot(x, el, linestyle="--", color='tab:orange')
+    ax01.tick_params(axis='y', labelcolor='tab:orange')
+    ax01.xaxis.set_tick_params(labelsize=5)
+
+    ax[1].set_xlabel('Time')
+    ax[1].set_ylabel('TECu/sec')
+    ax[1].scatter(x[1:], y_diff)
+    ax[1].plot(x[1:], p(x_range), "r--")
+    ax[1].xaxis.set_tick_params(labelsize=5)
+
+    ax[2].set_xlabel('Time')
+    ax[2].set_ylabel('TECu/sec')
+    ax[2].scatter(df_for_plot['Timestamp'], df_for_plot['Phase tec'], color=df_for_plot['Color'])
+    ax[2].xaxis.set_tick_params(labelsize=5)
+
+    ax[3].set_xlabel('Time')
+    ax[3].set_ylabel('TECu/sec')
+    ax[3].scatter(df_for_win['Timestamp'], df_for_win['Phase tec'], color=df_for_win['Color'])
+    ax[3].xaxis.set_tick_params(labelsize=5)
     if show_plot:
         plt.show()
     if save_plot:
-        plt.savefig(save_plot)
+        plt.savefig(save_plot, dpi=1080/fig.get_size_inches()[1])
 
 
 def check_range_tec(df: pd.DataFrame, poli_degree: int = 1, std_mult: float = 1):
@@ -149,6 +236,9 @@ def check_range_tec(df: pd.DataFrame, poli_degree: int = 1, std_mult: float = 1)
 
     mean_yr = np.nanmean(yr)
     yr = [mean_yr if np.isnan(y) else y for y in yr ]
+
+    if len(yr) <= 2:
+        return []
 
     x_range = range(0, len(x))
     z = np.polyfit(x_range, yr, poli_degree)
@@ -171,9 +261,13 @@ def check_range_tec(df: pd.DataFrame, poli_degree: int = 1, std_mult: float = 1)
 def plot_check_range_tec(df: pd.DataFrame, poli_degree: int = 1, std_mult: float = 1, sat: str = '', show_plot: bool = False, save_plot: str = None):
     x = df["Timestamp"].values
     yr = df["P range tec"].values
+    el = df['Elevation'].values
 
     mean_yr = np.nanmean(yr)
     yr = [mean_yr if np.isnan(y) else y for y in yr ]
+
+    if len(yr) <= 2:
+        return []
 
     x_range = range(0, len(x))
     z = np.polyfit(x_range, yr, poli_degree)
@@ -186,16 +280,60 @@ def plot_check_range_tec(df: pd.DataFrame, poli_degree: int = 1, std_mult: float
 
     df_for_plot['Color'] = 'Green'
     df_for_plot.loc[df_for_plot[df_for_plot['P range tec'].abs() > std_yr * std_mult].index, 'Color'] = 'Red'
-    
-    fig, ax = plt.subplots(nrows=2, ncols=1)
+
+    df_for_win = pd.DataFrame(zip(x, detrended_yr), columns=('Timestamp', 'P range tec'))
+    df_for_win['Color'] = 'green'
+
+    min_win_size = 20
+    max_win_size = 120
+    for window in df_for_win.rolling(window=max_win_size):
+        if (min_win_size <= len(window) <= max_win_size):
+            check_win = df_for_win.loc[window.index]
+            check_win = check_win[check_win['Color'] != 'red']
+            win_std = check_win['P range tec'].std()
+            all_std = df_for_win[df_for_win['P range tec'] != 'red']['P range tec'].std()
+            # std = np.mean([win_std, all_std])
+            std = win_std
+            problems = check_win[check_win['P range tec'].abs() > std * std_mult]
+            print(window)
+            print(problems)
+            print(std)
+            df_for_win.loc[problems.index, 'Color'] = 'red'
+            print(df_for_win.loc[problems.index])
+            print(" ")
+
+    print("Plot range tec")
+    fig, ax = plt.subplots(nrows=3, ncols=1)
     fig.suptitle(f'{sat} P range tec')
+
+    ax[0].set_xlabel('Time')
+    ax[0].set_ylabel('TECu')
     ax[0].scatter(x, yr)
-    ax[0].plot(x, p(x_range), "r--")    
+    ax[0].plot(x, p(x_range), "r--")
+    ax[0].xaxis.set_tick_params(labelsize=5)
+
+    ax01 = ax[0].twinx()
+    ax01.set_ylabel('Elevation')
+    ax01.plot(x, el, linestyle="--", color='tab:orange')
+    ax01.tick_params(axis='y', labelcolor='tab:orange')
+    ax01.xaxis.set_tick_params(labelsize=5)
+    
+    ax[1].set_xlabel('Time')
+    ax[1].set_ylabel('TECu')
     ax[1].scatter(df_for_plot['Timestamp'], df_for_plot['P range tec'], color=df_for_plot['Color'])
+    ax[1].xaxis.set_tick_params(labelsize=5)
+
+    ax[2].set_xlabel('Time')
+    ax[2].set_ylabel('TECu')
+    ax[2].scatter(df_for_win['Timestamp'], df_for_win['P range tec'], color=df_for_win['Color'])
+    ax[2].xaxis.set_tick_params(labelsize=5)
+
     if show_plot:
         plt.show()
     if save_plot:
-        plt.savefig(save_plot)
+        # plt.savefig(save_plot)
+        plt.savefig(save_plot, dpi=1080/fig.get_size_inches()[1])
+
 
 
 if __name__ == '__main__':
