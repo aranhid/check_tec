@@ -95,7 +95,8 @@ def devide_by_time(df):
 
         ret.append(part)
     
-    ret.append(working_df[working_df.index > borders_indexes[-1]])
+    if len(borders_indexes):
+        ret.append(working_df[working_df.index > borders_indexes[-1]])
 
     return ret
 
