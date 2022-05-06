@@ -226,17 +226,18 @@ if __name__ == '__main__':
         phase_tec_problem_by_sat[sat] = []
         range_tec_problem_by_sat[sat] = []
         for index, part in enumerate(devided_sat_df):
-            phase_tec_problem_by_sat[sat].append(check_phase_tec(df=part, std_mult=args.std_mult_phase))
-            range_tec_problem_by_sat[sat].append(check_range_tec(df=part, poli_degree=args.poli_degree, std_mult=args.std_mult_range))
+            if len(part):
+                phase_tec_problem_by_sat[sat].append(check_phase_tec(df=part, std_mult=args.std_mult_phase))
+                range_tec_problem_by_sat[sat].append(check_range_tec(df=part, poli_degree=args.poli_degree, std_mult=args.std_mult_range))
 
-            if args.plot_show or args.plot_dir:
-                phase_tec_file = None
-                range_tec_file = None
-                if args.plot_dir:
-                    phase_tec_file = os.path.join(args.plot_dir, f"{sat}_phase_tec_{index}.png")
-                    range_tec_file = os.path.join(args.plot_dir, f"{sat}_range_tec_{index}.png")
-                plot_check_phase_tec(df=part, std_mult=args.std_mult_phase, sat=sat, show_plot=args.plot_show, save_plot=phase_tec_file)
-                plot_check_range_tec(df=part, poli_degree=args.poli_degree, std_mult=args.std_mult_range, sat=sat, show_plot=args.plot_show, save_plot=range_tec_file)
+                if args.plot_show or args.plot_dir:
+                    phase_tec_file = None
+                    range_tec_file = None
+                    if args.plot_dir:
+                        phase_tec_file = os.path.join(args.plot_dir, f"{sat}_phase_tec_{index}.png")
+                        range_tec_file = os.path.join(args.plot_dir, f"{sat}_range_tec_{index}.png")
+                    plot_check_phase_tec(df=part, std_mult=args.std_mult_phase, sat=sat, show_plot=args.plot_show, save_plot=phase_tec_file)
+                    plot_check_range_tec(df=part, poli_degree=args.poli_degree, std_mult=args.std_mult_range, sat=sat, show_plot=args.plot_show, save_plot=range_tec_file)
 
     # pprint(phase_tec_problem_by_sat)
     # pprint(range_tec_problem_by_sat)
