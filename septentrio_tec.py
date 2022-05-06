@@ -4,7 +4,7 @@ import gzip
 import shlex
 import shutil
 import subprocess
-from ftplib import FTP_TLS
+from ftplib import FTP_TLS, error_temp
 
 
 def ungz(gzip_path, ungzip_path):
@@ -20,12 +20,17 @@ def download_nav_file(short_year, day, path):
     directory = f'gnss/data/daily/{year}/{day}/{short_year}p' #sys.argv[2]
     filename = f'BRDC00IGS_R_{year}{day}0000_01D_MN.rnx.gz' #sys.argv[3]
 
-    if not os.path.exists(os.path.join(path, filename)) or os.path.getsize(os.path.join(path, filename)) == 0:
-        ftps = FTP_TLS(host = 'gdc.cddis.eosdis.nasa.gov')
-        ftps.login(user='anonymous', passwd=email)
-        ftps.prot_p()
-        ftps.cwd(directory)
-        ftps.retrbinary("RETR " + filename, open(os.path.join(path, filename), 'wb').write)
+    try:
+        if not os.path.exists(os.path.join(path, filename)) or os.path.getsize(os.path.join(path, filename)) == 0:
+            ftps = FTP_TLS(host = 'gdc.cddis.eosdis.nasa.gov')
+            ftps.login(user='anonymous', passwd=email)
+            ftps.prot_p()
+            ftps.cwd(directory)
+            ftps.retrbinary("RETR " + filename, open(os.path.join(path, filename), 'wb').write)
+    
+    except error_temp as e:
+        print(e)
+        download_nav_file(short_year, day, path)
     
     return filename
 
