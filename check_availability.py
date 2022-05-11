@@ -7,6 +7,26 @@ from datetime import timedelta
 from reader import get_dataframe
 
 
+def find_common_problems(df: pd.DataFrame, interval: timedelta):
+    sats = df['Satellite'].unique()
+    gaps = df[df['Status'] == 'Common gap']
+    gaps = gaps[gaps['Satellite'] == sats[0]].copy()
+
+    gap_time_start = []
+    gap_time_start.append(gaps.iloc[0]['Timestamp'].to_pydatetime())
+    gaps['diff'] = gaps['Timestamp'].diff()
+    borders = gaps[gaps['diff'] > interval]
+    gap_time_start.extend(borders['Timestamp'].dt.to_pydatetime())
+    
+    
+    gap_time_end = []
+    gap_time_end.extend((borders['Timestamp'] - borders['diff'] + interval).dt.to_pydatetime())
+    gap_time_end.append(gaps.iloc[-1]['Timestamp'].to_pydatetime())
+    
+    common_problems = list(zip(gap_time_start, gap_time_end))
+    return common_problems
+
+
 def check_density_of_gaps(df: pd.DataFrame, interval: timedelta, window_size: float, max_gap_num: int):
     window_len = window_size // interval.total_seconds()
     window_size_str = str(window_size) + 'S'
@@ -80,8 +100,8 @@ if __name__ == '__main__':
 
     interval = timedelta(seconds=args.interval)
 
-    common_gaps_df, working_df = get_dataframe(args.files, interval, args.nav_file, args.cutoff)
-
+    working_df = get_dataframe(args.files, interval, args.nav_file, args.cutoff)
+    common_problems = find_common_problems(working_df, interval)
     problems_by_sat = {}
     if args.nav_file:
         print('Find problems by satellite')
