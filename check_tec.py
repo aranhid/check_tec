@@ -352,7 +352,7 @@ if __name__ == '__main__':
 
     interval = timedelta(seconds=args.interval)
 
-    common_gaps_df, working_df = get_dataframe(args.files, interval, args.nav_file, args.cutoff)
+    working_df = get_dataframe(args.files, interval, args.nav_file, args.cutoff)
 
     print('Find problems by satellite')
     phase_tec_problem_by_sat = {}
