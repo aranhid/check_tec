@@ -101,47 +101,12 @@ def devide_by_time(df):
     return ret
 
 
-def check_phase_tec(df: pd.DataFrame, std_mult: float = 1):
-    # считаем производную (дельты)
-    # что делаем с пропусками - ???? (пока пропускаем)
-    # по дельтам смотрим выбросы - определяем таким образом срыв фазы
-
-    # попробовать смотреть отклонения при разнице > 1
-
+def check_phase_tec(df: pd.DataFrame, std_mult: float = 1, poli_degree: int = 7, rate: float = 0.035, min_win_size: int = 20, max_win_size: int = 100):
     working_df = df[df['Phase tec'].notna()]
     if len(working_df) == 0:
-        return []
+        return pd.DataFrame()
     x = working_df['Timestamp'].values
     y = working_df['Phase tec'].values
-    if len(x) <= 2 and len(y) <= 2:
-        return []
-    y_diff = np.diff(y)
-
-    x_range = range(0, len(x[:-1]))
-    z = np.polyfit(x_range, y_diff, 3)
-    p = np.poly1d(z)
-
-    detrend_y_diff = y_diff - p(x_range)
-    std_y_diff = np.std(detrend_y_diff)
-
-    df_for_plot = pd.DataFrame(zip(x[:-1], detrend_y_diff), columns=('Timestamp', 'Phase tec'))
-    df_for_plot['Color'] = 'Green'
-    # df_for_plot.loc[df_for_plot[df_for_plot['Phase tec'].abs() > std_y_diff * std_mult].index, 'Color'] = 'Red'
-    df_for_plot.loc[df_for_plot[df_for_plot['Phase tec'].abs() > 1.0].index, 'Color'] = 'Red'
-
-    red_tec = df_for_plot[df_for_plot['Color'] == 'Red']
-    ret = list(zip(red_tec['Timestamp'].values, red_tec['Phase tec'].values))
-
-    return ret
-
-
-def plot_check_phase_tec(df: pd.DataFrame, std_mult: float = 1, poli_degree: int = 7, rate: float = 0.035, sat: str = '', show_plot: bool = False, save_plot: str = None):
-    working_df = df[df['Phase tec'].notna()]
-    if len(working_df) == 0:
-        return []
-    x = working_df['Timestamp'].values
-    y = working_df['Phase tec'].values
-    el = working_df['Elevation'].values
 
     x_diff = np.diff(x)
     x_diff = x_diff / np.timedelta64(1, 's')
@@ -149,50 +114,54 @@ def plot_check_phase_tec(df: pd.DataFrame, std_mult: float = 1, poli_degree: int
 
     tec_diff_by_sec = y_diff / x_diff
 
-    y_diff = tec_diff_by_sec
-
-    if len(y_diff) <= 2:
-        return []
+    if len(tec_diff_by_sec) < poli_degree:
+        return pd.DataFrame()
 
     x_range = list(range(0, len(x[1:])))
-    z = np.polyfit(x_range, y_diff, poli_degree)
+    z = np.polyfit(x_range, tec_diff_by_sec, poli_degree)
     p = np.poly1d(z)
 
-    detrend_y_diff = y_diff - p(x_range)
-    std_y_diff = np.std(detrend_y_diff)
+    detrend_tec_diff = tec_diff_by_sec - p(x_range)
 
-    df_for_plot = pd.DataFrame(zip(x[1:], detrend_y_diff), columns=('Timestamp', 'Phase tec'))
-    df_for_plot['Color'] = 'green'
-    red_dots = df_for_plot[df_for_plot['Phase tec'].abs() > std_y_diff * std_mult]
-    red_dots = red_dots[red_dots['Phase tec'].abs() > rate]
-    df_for_plot.loc[red_dots.index, 'Color'] = 'red'
-
-    df_for_win = pd.DataFrame(zip(x[1:], detrend_y_diff), columns=('Timestamp', 'Phase tec'))
+    df_for_win = pd.DataFrame(zip(x[1:], detrend_tec_diff), columns=('Timestamp', 'Phase tec'))
     df_for_win['Color'] = 'green'
 
-    min_win_size = 20
-    max_win_size = 120
     for window in df_for_win.rolling(window=max_win_size):
         if (min_win_size <= len(window) <= max_win_size):
-        # if len(window) > 2:
-            # print(window)
             check_win = df_for_win.loc[window.index]
             check_win = check_win[check_win['Color'] != 'red']
             # check_win = window
             win_std = check_win['Phase tec'].std()
-            all_std = df_for_win[df_for_win['Phase tec'] != 'red']['Phase tec'].std()
-            # print(win_std, all_std)
-            # std = np.mean([win_std, all_std])
-            std = win_std
-            problems = check_win[check_win['Phase tec'].abs() > std * std_mult]
+            problems = check_win[check_win['Phase tec'].abs() > win_std * std_mult]
             problems = problems[problems['Phase tec'].abs() > rate]
-            # print(problems)
             df_for_win.loc[problems.index, 'Color'] = 'red'
 
-    # print(df_for_win)
+    return df_for_win
 
+
+def plot_check_phase_tec(part: pd.DataFrame, checked_part: pd.DataFrame, poli_degree: int = 7, sat: str = '', show_plot: bool = False, save_plot: str = None):
+    part_phase_tec = part[part['Phase tec'].notna()]
+    if len(part_phase_tec) == 0:
+        return
+    x = part_phase_tec['Timestamp'].values
+    y = part_phase_tec['Phase tec'].values
+    el = part_phase_tec['Elevation'].values
+
+    x_diff = np.diff(x)
+    x_diff = x_diff / np.timedelta64(1, 's')
+    y_diff = np.diff(y)
+
+    tec_diff_by_sec = y_diff / x_diff
+
+    if len(tec_diff_by_sec) < poli_degree:
+        return
+
+    x_range = list(range(0, len(x[1:])))
+    z = np.polyfit(x_range, tec_diff_by_sec, poli_degree)
+    p = np.poly1d(z)
+    
     print('Plot phase tec')
-    fig, ax = plt.subplots(nrows=4, ncols=1)
+    fig, ax = plt.subplots(nrows=3, ncols=1)
     fig.suptitle(f'{sat} Phase TEC')
     
     ax[0].set_xlabel('Time')
@@ -209,102 +178,73 @@ def plot_check_phase_tec(df: pd.DataFrame, std_mult: float = 1, poli_degree: int
 
     ax[1].set_xlabel('Time')
     ax[1].set_ylabel('TECu/sec')
-    ax[1].scatter(x[1:], y_diff)
+    ax[1].scatter(x[1:], tec_diff_by_sec)
     ax[1].plot(x[1:], p(x_range), "r--")
     ax[1].xaxis.set_tick_params(labelsize=5)
 
     ax[2].set_xlabel('Time')
     ax[2].set_ylabel('TECu/sec')
-    ax[2].scatter(df_for_plot['Timestamp'], df_for_plot['Phase tec'], color=df_for_plot['Color'])
+    ax[2].scatter(checked_part['Timestamp'], checked_part['Phase tec'], color=checked_part['Color'])
     ax[2].xaxis.set_tick_params(labelsize=5)
 
-    ax[3].set_xlabel('Time')
-    ax[3].set_ylabel('TECu/sec')
-    ax[3].scatter(df_for_win['Timestamp'], df_for_win['Phase tec'], color=df_for_win['Color'])
-    ax[3].xaxis.set_tick_params(labelsize=5)
     if show_plot:
         plt.show()
     if save_plot:
         plt.savefig(save_plot, dpi=1080/fig.get_size_inches()[1])
 
 
-def check_range_tec(df: pd.DataFrame, poli_degree: int = 1, std_mult: float = 1):
-    # заполняем пропуски средними значениями
-    # удаляем тренд
-    # проверяем СКО
-    x = df["Timestamp"].values
-    yr = df["P range tec"].values
+def check_range_tec(df: pd.DataFrame, poli_degree: int = 10, std_mult: float = 1, min_win_size: int = 20, max_win_size: int = 100):
+    working_df = df[df['P range tec'].notna()]
+    if len(working_df) == 0:
+        return pd.DataFrame()
+    x = working_df["Timestamp"].values
+    yr = working_df["P range tec"].values
 
-    mean_yr = np.nanmean(yr)
-    yr = [mean_yr if np.isnan(y) else y for y in yr ]
+    # mean_yr = np.nanmean(yr)
+    # yr = [mean_yr if np.isnan(y) else y for y in yr ]
 
-    if len(yr) <= 2:
-        return []
-
-    x_range = range(0, len(x))
-    z = np.polyfit(x_range, yr, poli_degree)
-    p = np.poly1d(z)
-
-    detrended_yr = yr - p(x_range)
-    std_yr = np.std(detrended_yr)
-
-    df_for_plot = pd.DataFrame(zip(x, detrended_yr), columns=('Timestamp', 'P range tec'))
-
-    df_for_plot['Color'] = 'Green'
-    df_for_plot.loc[df_for_plot[df_for_plot['P range tec'].abs() > std_yr * std_mult].index, 'Color'] = 'Red'
-
-    red_tec = df_for_plot[df_for_plot['Color'] == 'Red']
-    ret = list(zip(red_tec['Timestamp'].values, red_tec['P range tec'].values))
-
-    return ret
-
-
-def plot_check_range_tec(df: pd.DataFrame, poli_degree: int = 1, std_mult: float = 1, sat: str = '', show_plot: bool = False, save_plot: str = None):
-    x = df["Timestamp"].values
-    yr = df["P range tec"].values
-    el = df['Elevation'].values
-
-    mean_yr = np.nanmean(yr)
-    yr = [mean_yr if np.isnan(y) else y for y in yr ]
-
-    if len(yr) <= 2:
-        return []
+    if len(yr) < poli_degree:
+        return pd.DataFrame()
 
     x_range = range(0, len(x))
     z = np.polyfit(x_range, yr, poli_degree)
     p = np.poly1d(z)
 
     detrended_yr = yr - p(x_range)
-    std_yr = np.std(detrended_yr)
-
-    df_for_plot = pd.DataFrame(zip(x, detrended_yr), columns=('Timestamp', 'P range tec'))
-
-    df_for_plot['Color'] = 'Green'
-    df_for_plot.loc[df_for_plot[df_for_plot['P range tec'].abs() > std_yr * std_mult].index, 'Color'] = 'Red'
 
     df_for_win = pd.DataFrame(zip(x, detrended_yr), columns=('Timestamp', 'P range tec'))
     df_for_win['Color'] = 'green'
 
-    min_win_size = 20
-    max_win_size = 120
     for window in df_for_win.rolling(window=max_win_size):
         if (min_win_size <= len(window) <= max_win_size):
             check_win = df_for_win.loc[window.index]
             check_win = check_win[check_win['Color'] != 'red']
             win_std = check_win['P range tec'].std()
-            all_std = df_for_win[df_for_win['P range tec'] != 'red']['P range tec'].std()
-            # std = np.mean([win_std, all_std])
-            std = win_std
-            problems = check_win[check_win['P range tec'].abs() > std * std_mult]
-            # print(window)
-            # print(problems)
-            # print(std)
+            problems = check_win[check_win['P range tec'].abs() > win_std * std_mult]
             df_for_win.loc[problems.index, 'Color'] = 'red'
-            # print(df_for_win.loc[problems.index])
-            # print(" ")
+    
+    return df_for_win
+
+def plot_check_range_tec(part: pd.DataFrame, checked_part: pd.DataFrame, poli_degree: int = 10, sat: str = '', show_plot: bool = False, save_plot: str = None):
+    part_range_tec = part[part['P range tec'].notna()]
+    if len(part_range_tec) == 0:
+        return None
+    x = part_range_tec["Timestamp"].values
+    yr = part_range_tec["P range tec"].values
+    el = part_range_tec["Elevation"].values
+
+    # mean_yr = np.nanmean(yr)
+    # yr = [mean_yr if np.isnan(y) else y for y in yr ]
+
+    if len(yr) < poli_degree:
+        return None
+
+    x_range = range(0, len(x))
+    z = np.polyfit(x_range, yr, poli_degree)
+    p = np.poly1d(z)
 
     print("Plot range tec")
-    fig, ax = plt.subplots(nrows=3, ncols=1)
+    fig, ax = plt.subplots(nrows=2, ncols=1)
     fig.suptitle(f'{sat} P range tec')
 
     ax[0].set_xlabel('Time')
@@ -321,29 +261,26 @@ def plot_check_range_tec(df: pd.DataFrame, poli_degree: int = 1, std_mult: float
     
     ax[1].set_xlabel('Time')
     ax[1].set_ylabel('TECu')
-    ax[1].scatter(df_for_plot['Timestamp'], df_for_plot['P range tec'], color=df_for_plot['Color'])
+    ax[1].scatter(checked_part['Timestamp'], checked_part['P range tec'], color=checked_part['Color'])
     ax[1].xaxis.set_tick_params(labelsize=5)
-
-    ax[2].set_xlabel('Time')
-    ax[2].set_ylabel('TECu')
-    ax[2].scatter(df_for_win['Timestamp'], df_for_win['P range tec'], color=df_for_win['Color'])
-    ax[2].xaxis.set_tick_params(labelsize=5)
 
     if show_plot:
         plt.show()
     if save_plot:
-        # plt.savefig(save_plot)
         plt.savefig(save_plot, dpi=1080/fig.get_size_inches()[1])
-
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--files', type=str, nargs='+', help='path to RINEX file')
     parser.add_argument('--interval', type=float, help='interval of RINEX file, in seconds')
-    parser.add_argument('--poli-degree', type=int, help='degree of the fitting polynomial')
-    parser.add_argument('--std-mult-range', type=int, help='multiplier of standard deviation for range TEC')
-    parser.add_argument('--std-mult-phase', type=int, help='multiplier of standard deviation for phase TEC')
+    parser.add_argument('--poli-degree-phase', type=float, default=7, help='degree of the fitting polynomial')
+    parser.add_argument('--poli-degree-range', type=float, default=10, help='degree of the fitting polynomial')
+    parser.add_argument('--std-mult-phase', type=float, default=3, help='multiplier of standard deviation for phase TEC')
+    parser.add_argument('--std-mult-range', type=float, default=3, help='multiplier of standard deviation for range TEC')
+    parser.add_argument('--phase_rate', type=float, default=0.035, help='multiplier of standard deviation for range TEC')
+    parser.add_argument('--min-win-size', type=int, default=20, help='minimum size of window, in measurement')
+    parser.add_argument('--max-win-size', type=int, default=100, help='maximum size of window, in measurement')
     parser.add_argument('--plot-show', action='store_true', help='show plot')
     parser.add_argument('--plot-dir', type=str, default=None, help='path to dir to save plot images')
     parser.add_argument('--nav-file', type=str, help='path to NAV file')
@@ -366,8 +303,19 @@ if __name__ == '__main__':
         range_tec_problem_by_sat[sat] = []
         for index, part in enumerate(devided_sat_df):
             if len(part):
-                phase_tec_problem_by_sat[sat].append(check_phase_tec(df=part, std_mult=args.std_mult_phase))
-                range_tec_problem_by_sat[sat].append(check_range_tec(df=part, poli_degree=args.poli_degree, std_mult=args.std_mult_range))
+                checked_part_phase = check_phase_tec(df=part, std_mult=args.std_mult_phase, poli_degree=args.poli_degree_phase, rate=args.phase_rate, min_win_size=args.min_win_size, max_win_size=args.max_win_size)
+                if not checked_part_phase.empty:
+                    red_phase_tec = checked_part_phase[checked_part_phase['Color'] == 'Red']
+                    phase_tec_problems = list(zip(red_phase_tec['Timestamp'].values, red_phase_tec['Phase tec'].values))
+                    if len(phase_tec_problems):
+                        phase_tec_problem_by_sat[sat].append(phase_tec_problems)
+
+                checked_part_range = check_range_tec(df=part, poli_degree=args.poli_degree_range, std_mult=args.std_mult_phase, min_win_size=args.min_win_size, max_win_size=args.max_win_size)
+                if not checked_part_range.empty:
+                    red_range_tec = checked_part_range[checked_part_range['Color'] == 'Red']
+                    range_tec_problems = list(zip(red_range_tec['Timestamp'].values, red_range_tec['P range tec'].values))
+                    if len(range_tec_problems):
+                        range_tec_problem_by_sat[sat].append(range_tec_problems)
 
                 if args.plot_show or args.plot_dir:
                     phase_tec_file = None
@@ -377,8 +325,11 @@ if __name__ == '__main__':
                             os.makedirs(args.plot_dir)
                         phase_tec_file = os.path.join(args.plot_dir, f"{sat}_phase_tec_{index}.png")
                         range_tec_file = os.path.join(args.plot_dir, f"{sat}_range_tec_{index}.png")
-                    plot_check_phase_tec(df=part, std_mult=args.std_mult_phase, sat=sat, show_plot=args.plot_show, save_plot=phase_tec_file)
-                    plot_check_range_tec(df=part, poli_degree=args.poli_degree, std_mult=args.std_mult_range, sat=sat, show_plot=args.plot_show, save_plot=range_tec_file)
+                        if not checked_part_phase.empty:
+                            plot_check_phase_tec(part, checked_part_phase, poli_degree=args.poli_degree_phase, sat=sat, show_plot=args.plot_show, save_plot=phase_tec_file)
+
+                        if not checked_part_range.empty:
+                            plot_check_range_tec(part, checked_part_range, poli_degree=args.poli_degree_range, sat=sat, show_plot=args.plot_show, save_plot=range_tec_file)
 
     # pprint(phase_tec_problem_by_sat)
     # pprint(range_tec_problem_by_sat)
