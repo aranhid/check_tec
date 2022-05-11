@@ -128,4 +128,4 @@ def get_dataframe(files: list, interval: timedelta, nav_file: str = None, cutoff
         print('Add elevations')
         working_df = add_elevations(working_df, interval, xyz, nav_file, cutoff)
 
-    return common_gaps_df, working_df
+    return working_df
