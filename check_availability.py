@@ -12,19 +12,22 @@ def find_common_problems(df: pd.DataFrame, interval: timedelta):
     gaps = df[df['Status'] == 'Common gap']
     gaps = gaps[gaps['Satellite'] == sats[0]].copy()
 
-    gap_time_start = []
-    gap_time_start.append(gaps.iloc[0]['Timestamp'].to_pydatetime())
-    gaps['diff'] = gaps['Timestamp'].diff()
-    borders = gaps[gaps['diff'] > interval]
-    gap_time_start.extend(borders['Timestamp'].dt.to_pydatetime())
-    
-    
-    gap_time_end = []
-    gap_time_end.extend((borders['Timestamp'] - borders['diff'] + interval).dt.to_pydatetime())
-    gap_time_end.append(gaps.iloc[-1]['Timestamp'].to_pydatetime())
-    
-    common_problems = list(zip(gap_time_start, gap_time_end))
-    return common_problems
+    if not gaps.empty:
+        gap_time_start = []
+        gap_time_start.append(gaps.iloc[0]['Timestamp'].to_pydatetime())
+        gaps['diff'] = gaps['Timestamp'].diff()
+        borders = gaps[gaps['diff'] > interval]
+        gap_time_start.extend(borders['Timestamp'].dt.to_pydatetime())
+        
+        
+        gap_time_end = []
+        gap_time_end.extend((borders['Timestamp'] - borders['diff'] + interval).dt.to_pydatetime())
+        gap_time_end.append(gaps.iloc[-1]['Timestamp'].to_pydatetime())
+        
+        common_problems = list(zip(gap_time_start, gap_time_end))
+        return common_problems
+
+    return []
 
 
 def check_density_of_gaps(df: pd.DataFrame, interval: timedelta, window_size: float, max_gap_num: int):
@@ -85,8 +88,9 @@ def create_debug_plot(df: pd.DataFrame, problems_by_sat: dict, interval: timedel
     if filename:
         fig.write_image(filename, width=1920, height=1080)
 
-
+from timeit import default_timer as timer
 if __name__ == '__main__':
+    start = timer()
     parser = argparse.ArgumentParser()
     parser.add_argument('--files', type=str, nargs='+', help='path to RINEX file')
     parser.add_argument('--interval', type=float, help='interval of RINEX file, in seconds')
@@ -117,3 +121,5 @@ if __name__ == '__main__':
     # pprint.pprint(common_problems)
     # print('Problems by satellite')
     # pprint.pprint(problems_by_sat)
+    end = timer()
+    print(timedelta(seconds=end-start))
