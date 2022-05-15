@@ -325,11 +325,11 @@ if __name__ == '__main__':
                             os.makedirs(args.plot_dir)
                         phase_tec_file = os.path.join(args.plot_dir, f"{sat}_phase_tec_{index}.png")
                         range_tec_file = os.path.join(args.plot_dir, f"{sat}_range_tec_{index}.png")
-                        if not checked_part_phase.empty:
-                            plot_check_phase_tec(part, checked_part_phase, poli_degree=args.poli_degree_phase, sat=sat, show_plot=args.plot_show, save_plot=phase_tec_file)
+                    if not checked_part_phase.empty:
+                        plot_check_phase_tec(part, checked_part_phase, poli_degree=args.poli_degree_phase, sat=sat, show_plot=args.plot_show, save_plot=phase_tec_file)
 
-                        if not checked_part_range.empty:
-                            plot_check_range_tec(part, checked_part_range, poli_degree=args.poli_degree_range, sat=sat, show_plot=args.plot_show, save_plot=range_tec_file)
+                    if not checked_part_range.empty:
+                        plot_check_range_tec(part, checked_part_range, poli_degree=args.poli_degree_range, sat=sat, show_plot=args.plot_show, save_plot=range_tec_file)
 
     # pprint(phase_tec_problem_by_sat)
     # pprint(range_tec_problem_by_sat)
