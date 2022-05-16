@@ -1,11 +1,12 @@
 import os
 import argparse
-from pprint import pprint
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from datetime import timedelta
+from pprint import pprint
 from gnss_tec import gnss
+from datetime import timedelta
+from matplotlib.figure import Figure
 
 from reader import get_dataframe
 
@@ -147,7 +148,7 @@ def check_phase_tec(df: pd.DataFrame, std_mult: float = 1, poli_degree: int = 7,
     return df_for_win
 
 
-def plot_check_phase_tec(part: pd.DataFrame, checked_part: pd.DataFrame, poli_degree: int = 7, sat: str = '', show_plot: bool = False, save_plot: str = None):
+def plot_check_phase_tec(part: pd.DataFrame, checked_part: pd.DataFrame, figure: Figure = None, poli_degree: int = 7, sat: str = '', show_plot: bool = False, save_plot: str = None):
     part_phase_tec = part[part['Phase tec'].notna()]
     if len(part_phase_tec) == 0:
         return
@@ -170,7 +171,14 @@ def plot_check_phase_tec(part: pd.DataFrame, checked_part: pd.DataFrame, poli_de
     p = np.poly1d(z)
     
     print('Plot phase tec')
-    fig, ax = plt.subplots(nrows=3, ncols=1)
+
+    if figure != None:
+        fig = figure
+        fig.clf()
+        ax = fig.subplots(nrows=3, ncols=1)
+    else:
+        fig, ax = plt.subplots(nrows=3, ncols=1)
+    
     fig.suptitle(f'{sat} Phase TEC')
     
     ax[0].set_xlabel('Time')
@@ -199,7 +207,11 @@ def plot_check_phase_tec(part: pd.DataFrame, checked_part: pd.DataFrame, poli_de
     ax[2].xaxis.set_tick_params(labelsize=5)
 
     if show_plot:
-        plt.show()
+        if figure != None:
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+        else:
+            plt.show()
     if save_plot:
         plt.savefig(save_plot, dpi=1080/fig.get_size_inches()[1])
 
@@ -238,7 +250,7 @@ def check_range_tec(df: pd.DataFrame, poli_degree: int = 10, std_mult: float = 1
     
     return df_for_win
 
-def plot_check_range_tec(part: pd.DataFrame, checked_part: pd.DataFrame, poli_degree: int = 10, sat: str = '', show_plot: bool = False, save_plot: str = None):
+def plot_check_range_tec(part: pd.DataFrame, checked_part: pd.DataFrame, figure: Figure = None, poli_degree: int = 10, sat: str = '', show_plot: bool = False, save_plot: str = None):
     part_range_tec = part[part['P range tec'].notna()]
     if len(part_range_tec) == 0:
         return None
@@ -258,7 +270,14 @@ def plot_check_range_tec(part: pd.DataFrame, checked_part: pd.DataFrame, poli_de
     p = np.poly1d(z)
 
     print("Plot range tec")
-    fig, ax = plt.subplots(nrows=2, ncols=1)
+
+    if figure != None:
+        fig = figure
+        fig.clf()
+        ax = fig.subplots(nrows=2, ncols=1)
+    else:
+        fig, ax = plt.subplots(nrows=2, ncols=1)
+
     fig.suptitle(f'{sat} P range tec')
 
     ax[0].set_xlabel('Time')
@@ -281,7 +300,11 @@ def plot_check_range_tec(part: pd.DataFrame, checked_part: pd.DataFrame, poli_de
     ax[1].xaxis.set_tick_params(labelsize=5)
 
     if show_plot:
-        plt.show()
+        if figure != None:
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+        else:
+            plt.show()
     if save_plot:
         plt.savefig(save_plot, dpi=1080/fig.get_size_inches()[1])
 
