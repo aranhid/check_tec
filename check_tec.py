@@ -113,6 +113,8 @@ def check_phase_tec(df: pd.DataFrame, std_mult: float = 1, poli_degree: int = 7,
         return pd.DataFrame()
     x = working_df['Timestamp'].values
     y = working_df['Phase tec'].values
+    x = x.astype('datetime64')
+    y = y.astype('float64')
 
     x_diff = np.diff(x)
     x_diff = x_diff / np.timedelta64(1, 's')
@@ -152,6 +154,8 @@ def plot_check_phase_tec(part: pd.DataFrame, checked_part: pd.DataFrame, poli_de
     x = part_phase_tec['Timestamp'].values
     y = part_phase_tec['Phase tec'].values
     el = part_phase_tec['Elevation'].values
+    x = x.astype('datetime64')
+    y = y.astype('float64')
 
     x_diff = np.diff(x)
     x_diff = x_diff / np.timedelta64(1, 's')
@@ -205,6 +209,8 @@ def check_range_tec(df: pd.DataFrame, poli_degree: int = 10, std_mult: float = 1
         return pd.DataFrame()
     x = working_df["Timestamp"].values
     yr = working_df["P range tec"].values
+    x = x.astype('datetime64')
+    yr = yr.astype('float64')
 
     # mean_yr = np.nanmean(yr)
     # yr = [mean_yr if np.isnan(y) else y for y in yr ]
@@ -238,6 +244,8 @@ def plot_check_range_tec(part: pd.DataFrame, checked_part: pd.DataFrame, poli_de
     x = part_range_tec["Timestamp"].values
     yr = part_range_tec["P range tec"].values
     el = part_range_tec["Elevation"].values
+    x = x.astype('datetime64')
+    yr = yr.astype('float64')
 
     # mean_yr = np.nanmean(yr)
     # yr = [mean_yr if np.isnan(y) else y for y in yr ]
