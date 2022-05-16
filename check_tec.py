@@ -79,9 +79,15 @@ def get_windows(data, window, step):
 
 def devide_by_time(df):
     working_df = df[df['Elevation'].notna()]
+    if working_df.empty:
+        return []
+    
     diff = working_df["Timestamp"].diff()
     
     borders = diff[diff > pd.Timedelta(60, 'min')]
+    if borders.empty:
+        return [working_df]
+    
     borders_indexes = borders.index
 
     ret = []
