@@ -153,7 +153,6 @@ def plot_check_phase_tec(part: pd.DataFrame, checked_part: pd.DataFrame, poli_de
         return
     x = part_phase_tec['Timestamp'].values
     y = part_phase_tec['Phase tec'].values
-    el = part_phase_tec['Elevation'].values
     x = x.astype('datetime64')
     y = y.astype('float64')
 
@@ -180,11 +179,13 @@ def plot_check_phase_tec(part: pd.DataFrame, checked_part: pd.DataFrame, poli_de
     ax[0].tick_params(axis='y', labelcolor='tab:blue')
     ax[0].xaxis.set_tick_params(labelsize=5)
 
-    ax01 = ax[0].twinx()
-    ax01.set_ylabel('Elevation')
-    ax01.plot(x, el, linestyle="--", color='tab:orange')
-    ax01.tick_params(axis='y', labelcolor='tab:orange')
-    ax01.xaxis.set_tick_params(labelsize=5)
+    if "Elevation" in part_phase_tec.columns:
+        el = part_phase_tec['Elevation'].values
+        ax01 = ax[0].twinx()
+        ax01.set_ylabel('Elevation')
+        ax01.plot(x, el, linestyle="--", color='tab:orange')
+        ax01.tick_params(axis='y', labelcolor='tab:orange')
+        ax01.xaxis.set_tick_params(labelsize=5)
 
     ax[1].set_xlabel('Time')
     ax[1].set_ylabel('TECu/sec')
@@ -243,7 +244,6 @@ def plot_check_range_tec(part: pd.DataFrame, checked_part: pd.DataFrame, poli_de
         return None
     x = part_range_tec["Timestamp"].values
     yr = part_range_tec["P range tec"].values
-    el = part_range_tec["Elevation"].values
     x = x.astype('datetime64')
     yr = yr.astype('float64')
 
@@ -267,11 +267,13 @@ def plot_check_range_tec(part: pd.DataFrame, checked_part: pd.DataFrame, poli_de
     ax[0].plot(x, p(x_range), "r--")
     ax[0].xaxis.set_tick_params(labelsize=5)
 
-    ax01 = ax[0].twinx()
-    ax01.set_ylabel('Elevation')
-    ax01.plot(x, el, linestyle="--", color='tab:orange')
-    ax01.tick_params(axis='y', labelcolor='tab:orange')
-    ax01.xaxis.set_tick_params(labelsize=5)
+    if "Elevation" in part_range_tec.columns:
+        el = part_range_tec["Elevation"].values
+        ax01 = ax[0].twinx()
+        ax01.set_ylabel('Elevation')
+        ax01.plot(x, el, linestyle="--", color='tab:orange')
+        ax01.tick_params(axis='y', labelcolor='tab:orange')
+        ax01.xaxis.set_tick_params(labelsize=5)
     
     ax[1].set_xlabel('Time')
     ax[1].set_ylabel('TECu')
