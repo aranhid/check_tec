@@ -22,11 +22,13 @@ logger.setLevel(logging.WARNING)
 
 
 df = pd.DataFrame(columns=('Timestamp', 'Satellite', 'Phase tec', 'P range tec'))
-glob_sat = 'G08'
+last_timestamp = None
+window_size = 600
 plt.ion()
-fig_phase = plt.figure()
-fig_range = plt.figure()
+# fig_phase = plt.figure()
+# fig_range = plt.figure()
 
+satellites_data = {}
 
 def gpsmsectotime(msec,leapseconds) -> datetime:
     datetimeformat = "%Y-%m-%d %H:%M:%S"
@@ -38,7 +40,7 @@ def gpsmsectotime(msec,leapseconds) -> datetime:
 
 
 def msg_process(msg):
-    global df
+    global last_timestamp
 
     val = msg.value()
     # dval = json.loads(val)
@@ -76,12 +78,34 @@ def msg_process(msg):
         phase_tec = t.phase_tec
 
         timestamp = gpsmsectotime(rtcm_msg.DF004, 37)
+        last_timestamp = timestamp
 
         df_data = [timestamp, sat, phase_tec, p_range_tec]
 
         local_df = pd.DataFrame(data=[df_data], columns=('Timestamp', 'Satellite', 'Phase tec', 'P range tec'))
 
-        df = pd.concat([df, local_df], ignore_index=True)
+        if sat not in satellites_data.keys():
+            satellites_data[sat] = {
+                'data': pd.DataFrame(columns=('Timestamp', 'Satellite', 'Phase tec', 'P range tec')),
+                'figure_phase': plt.figure(),
+                'figure_range': plt.figure(),
+            }
+
+        satellites_data[sat]['data'] = pd.concat([satellites_data[sat]['data'], local_df], ignore_index=True)
+        realtime_check_sat(satellites_data[sat]['data'], 
+                           satellites_data[sat]['figure_phase'], 
+                           satellites_data[sat]['figure_range'], 
+                           sat)
+        plt.pause(0.0001)
+        
+    for sat in list(satellites_data.keys()):
+        time_border = last_timestamp - timedelta(seconds=window_size)
+        satellites_data[sat]['data'] = satellites_data[sat]['data'][satellites_data[sat]['data']['Timestamp'] >= time_border]
+        if satellites_data[sat]['data'].empty:
+            plt.close(satellites_data[sat]['figure_phase'])
+            plt.close(satellites_data[sat]['figure_range'])
+            satellites_data.pop(sat)
+
 
         # print(sat)
         # print(f'timestamp = {rtcm_msg.DF004}')
@@ -92,12 +116,6 @@ def msg_process(msg):
         # print(f'Phase 1: original = {dval["Phase 1"]}, rtcm = {phase_1}')
         # print(f'Phase 2: original = {dval["Phase 2"]}, rtcm = {phase_2}')
         # print(f'Phase tec: original = {dval["Phase tec"]}, rtcm = {phase_tec}')
-
-        if sat == glob_sat:
-            df_for_check = df[df['Satellite'] == sat]
-            df_for_check = df_for_check[-120:]
-            realtime_check_sat(df_for_check, fig_phase, fig_range, sat)
-            plt.pause(0.0001)
 
 
 
@@ -144,8 +162,9 @@ def main():
     finally:
         # Close down consumer to commit final offsets.
         consumer.close()
-        plt.close(fig_phase)
-        plt.close(fig_range)
+        for key in satellites_data.keys():
+            plt.close(satellites_data[key]['figure_phase'])
+            plt.close(satellites_data[key]['figure_range'])
 
 
 if __name__ == "__main__":
