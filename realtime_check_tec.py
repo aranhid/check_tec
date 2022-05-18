@@ -41,11 +41,11 @@ def msg_process(msg):
     global df
 
     val = msg.value()
-    dval = json.loads(val)
+    # dval = json.loads(val)
 
-    base64_payload = dval['bin_message']
-    rtcm_payload = base64.b64decode(base64_payload.encode('utf-8'))
-    rtcm_msg = RTCMMessage(payload=rtcm_payload)
+    # base64_payload = dval['bin_message']
+    # rtcm_payload = base64.b64decode(base64_payload.encode('utf-8'))
+    rtcm_msg = RTCMMessage(payload=val)
 
     if rtcm_msg.identity == '1004':
         delimiter = 299792.46
