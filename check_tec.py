@@ -138,7 +138,7 @@ def check_phase_tec(df: pd.DataFrame, std_mult: float = 1, poli_degree: int = 7,
     for window in df_for_win.rolling(window=max_win_size):
         if (min_win_size <= len(window) <= max_win_size):
             check_win = df_for_win.loc[window.index]
-            check_win = check_win[check_win['Color'] != 'red']
+            # check_win = check_win[check_win['Color'] != 'red']
             # check_win = window
             win_std = check_win['Phase tec'].std()
             problems = check_win[check_win['Phase tec'].abs() > win_std * std_mult]
@@ -243,7 +243,7 @@ def check_range_tec(df: pd.DataFrame, poli_degree: int = 10, std_mult: float = 1
     for window in df_for_win.rolling(window=max_win_size):
         if (min_win_size <= len(window) <= max_win_size):
             check_win = df_for_win.loc[window.index]
-            check_win = check_win[check_win['Color'] != 'red']
+            # check_win = check_win[check_win['Color'] != 'red']
             win_std = check_win['P range tec'].std()
             problems = check_win[check_win['P range tec'].abs() > win_std * std_mult]
             df_for_win.loc[problems.index, 'Color'] = 'red'
