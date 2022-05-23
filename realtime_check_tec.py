@@ -23,7 +23,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.WARNING)
 
 last_timestamp = None
-window_size = 3600
+history_size = 3600
 q = queue.Queue()
 
 
@@ -69,7 +69,7 @@ def update_sat_data(sat, timestamp, phase_tec, p_range_tec):
     
     if timestamp != last_timestamp:
         last_timestamp = timestamp
-        time_border = last_timestamp - timedelta(seconds=window_size)
+        time_border = last_timestamp - timedelta(seconds=history_size)
         for sat in satellites_dataframe['Satellite'].unique():
             sat_df = satellites_dataframe[satellites_dataframe['Satellite'] == sat]
             sat_df_outstanding = sat_df[sat_df['Timestamp'] <= time_border]
@@ -172,11 +172,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('host', type=str, help='Host of the Kafka broker')
     parser.add_argument('topic', type=str, help='Name of the Kafka topic to stream.')
+    parser.add_argument('history_size', type=float, help='Size of the data history in seconds.')
 
     args = parser.parse_args()
 
+    global history_size
+
     host = args.host
     topic = args.topic
+    history_size = args.history_size
 
     conf = {'bootstrap.servers': f'{host}:9092',
             'default.topic.config': {'auto.offset.reset': 'smallest'},
