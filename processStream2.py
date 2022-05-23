@@ -3,25 +3,20 @@
 """Consumes stream for printing all messages to the console.
 """
 
-import argparse
-from codecs import ignore_errors
-from datetime import datetime, timedelta
-from glob import glob
-import json
-import base64
 import queue
 import sys
 import socket
+import argparse
 import threading
-from tkinter import TclError
 import pandas as pd
-import matplotlib.pyplot as plt
-from pyrtcm import RTCMMessage
-from confluent_kafka import Consumer, KafkaError, KafkaException
-from gnss_tec import tec, gnss
-from pprint import pprint
 
-from check_tec import check_phase_tec, check_range_tec, plot_check_phase_tec, plot_check_range_tec
+from pprint import pprint
+from pyrtcm import RTCMMessage
+from gnss_tec import tec, gnss
+from datetime import datetime, timedelta
+from confluent_kafka import Consumer, KafkaError, KafkaException
+
+from check_tec import check_phase_tec, check_range_tec
 
 import logging
 logger = logging.getLogger()
@@ -35,6 +30,7 @@ q = queue.Queue()
 satellites_dataframe = pd.DataFrame()
 problems_dataframe_phase = pd.DataFrame()
 problems_dataframe_range = pd.DataFrame()
+
 
 def gpsmsectotime(msec,leapseconds) -> datetime:
     datetimeformat = "%Y-%m-%d %H:%M:%S"
@@ -103,6 +99,7 @@ def check_phase(sat):
     problems_dataframe_phase.to_csv("problems_phase.csv")
 
     pprint(phase_tec_problems)
+
 
 def check_range(sat):
     global problems_dataframe_range
@@ -185,6 +182,9 @@ def main():
             'default.topic.config': {'auto.offset.reset': 'smallest'},
             'group.id': socket.gethostname()}
 
+    consumer = Consumer(conf)
+    consumer.subscribe([topic])
+
     workers = []
 
     for i in range(1):
@@ -192,18 +192,11 @@ def main():
         wrkr.start()
         workers.append(wrkr)
 
-
-    consumer = Consumer(conf)
-    consumer.subscribe([topic])
-
-    running = True
-
     try:
-        while running:
-            while True:
-                messages = consumer.consume(10, 1)
-                for msg in messages:
-                    msg_process(msg, topic)
+        while True:
+            messages = consumer.consume(10, 1)
+            for msg in messages:
+                msg_process(msg, topic)
 
     except KeyboardInterrupt:
         pass
