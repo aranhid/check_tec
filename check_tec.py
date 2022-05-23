@@ -204,7 +204,7 @@ def plot_check_phase_tec(part: pd.DataFrame, checked_part: pd.DataFrame, figure:
 
     ax[2].set_xlabel('Time')
     ax[2].set_ylabel('TECu/sec')
-    ax[2].scatter(checked_part['Timestamp'], checked_part['Phase tec'], color=checked_part['Color'])
+    ax[2].scatter(checked_part['Timestamp'].values.astype('datetime64'), checked_part['Phase tec'].values, color=checked_part['Color'])
     ax[2].xaxis.set_tick_params(labelsize=5)
 
     if show_plot:
@@ -298,7 +298,7 @@ def plot_check_range_tec(part: pd.DataFrame, checked_part: pd.DataFrame, figure:
     
     ax[1].set_xlabel('Time')
     ax[1].set_ylabel('TECu')
-    ax[1].scatter(checked_part['Timestamp'], checked_part['P range tec'], color=checked_part['Color'])
+    ax[1].scatter(checked_part['Timestamp'].values.astype('datetime64'), checked_part['P range tec'].values, color=checked_part['Color'])
     ax[1].xaxis.set_tick_params(labelsize=5)
 
     if show_plot:
