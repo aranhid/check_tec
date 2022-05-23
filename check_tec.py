@@ -369,14 +369,14 @@ if __name__ == '__main__':
             if len(part):
                 checked_part_phase = check_phase_tec(df=part, std_mult=args.std_mult_phase, poli_degree=args.poli_degree_phase, rate=args.phase_rate, min_win_size=args.min_win_size, max_win_size=args.max_win_size)
                 if not checked_part_phase.empty:
-                    red_phase_tec = checked_part_phase[checked_part_phase['Color'] == 'Red']
+                    red_phase_tec = checked_part_phase[checked_part_phase['Color'] == 'red']
                     phase_tec_problems = list(zip(red_phase_tec['Timestamp'].values, red_phase_tec['Phase tec'].values))
                     if len(phase_tec_problems):
                         phase_tec_problem_by_sat[sat].append(phase_tec_problems)
 
                 checked_part_range = check_range_tec(df=part, poli_degree=args.poli_degree_range, std_mult=args.std_mult_phase, min_win_size=args.min_win_size, max_win_size=args.max_win_size)
                 if not checked_part_range.empty:
-                    red_range_tec = checked_part_range[checked_part_range['Color'] == 'Red']
+                    red_range_tec = checked_part_range[checked_part_range['Color'] == 'red']
                     range_tec_problems = list(zip(red_range_tec['Timestamp'].values, red_range_tec['P range tec'].values))
                     if len(range_tec_problems):
                         range_tec_problem_by_sat[sat].append(range_tec_problems)
