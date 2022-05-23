@@ -179,6 +179,7 @@ def plot_check_phase_tec(part: pd.DataFrame, checked_part: pd.DataFrame, figure:
     else:
         fig, ax = plt.subplots(nrows=3, ncols=1)
     
+    fig.canvas.manager.set_window_title(f'{sat} Phase tec')
     fig.suptitle(f'{sat} Phase TEC')
     
     ax[0].set_xlabel('Time')
@@ -278,6 +279,7 @@ def plot_check_range_tec(part: pd.DataFrame, checked_part: pd.DataFrame, figure:
     else:
         fig, ax = plt.subplots(nrows=2, ncols=1)
 
+    fig.canvas.manager.set_window_title(f'{sat} P range tec')
     fig.suptitle(f'{sat} P range tec')
 
     ax[0].set_xlabel('Time')
