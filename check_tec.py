@@ -311,29 +311,6 @@ def plot_check_range_tec(part: pd.DataFrame, checked_part: pd.DataFrame, figure:
         plt.savefig(save_plot, dpi=1080/fig.get_size_inches()[1])
 
 
-def realtime_check_sat(df: pd.DataFrame, fig_phase, fig_range, sat: str = None):
-    phase_tec_problems = []
-    range_tec_problems = []
-
-    checked_phase = check_phase_tec(df)
-    if not checked_phase.empty:
-        red_phase_tec = checked_phase[checked_phase['Color'] == 'Red']
-        phase_tec_problems = list(zip(red_phase_tec['Timestamp'].values, red_phase_tec['Phase tec'].values))
-
-    checked_range = check_range_tec(df)
-    if not checked_range.empty:
-        red_range_tec = checked_range[checked_range['Color'] == 'Red']
-        range_tec_problems = list(zip(red_range_tec['Timestamp'].values, red_range_tec['P range tec'].values))
-
-    plot_check_phase_tec(df, checked_phase, fig_phase, sat=sat)
-    plot_check_range_tec(df, checked_range, fig_range, sat=sat)
-
-    print(sat)
-    pprint(phase_tec_problems)
-    pprint(range_tec_problems)
-    print(" ")
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--files', type=str, nargs='+', help='path to RINEX file')
