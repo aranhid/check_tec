@@ -8,11 +8,11 @@ from check_tec import plot_check_phase_tec, plot_check_range_tec
 
 def update_fig(i):
     try:
-        satellites_dataframe = pd.read_csv('satellites_dataframe.csv')
+        satellites_dataframe = pd.read_csv('csv/satellites_dataframe.csv')
         if mode == 'phase':
-            phase_problems = pd.read_csv('problems_phase.csv')
+            phase_problems = pd.read_csv('csv/problems_phase.csv')
         else:
-            range_problems = pd.read_csv('problems_range.csv')
+            range_problems = pd.read_csv('csv/problems_range.csv')
 
         sat_df = satellites_dataframe[satellites_dataframe['Satellite'] == sat]
         if not sat_df.empty:
