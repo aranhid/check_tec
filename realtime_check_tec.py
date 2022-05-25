@@ -68,6 +68,7 @@ def update_sat_data(sat, timestamp, phase_tec, p_range_tec):
     satellites_dataframe = pd.concat([satellites_dataframe, local_df], ignore_index=True)
     
     if timestamp != last_timestamp:
+        print(timestamp)
         last_timestamp = timestamp
         time_border = last_timestamp - timedelta(seconds=history_size)
         for sat in satellites_dataframe['Satellite'].unique():
