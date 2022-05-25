@@ -6,7 +6,7 @@ from matplotlib.animation import FuncAnimation
 from check_tec import plot_check_phase_tec, plot_check_range_tec
 
 
-def update_phase(i):
+def update_fig(i):
     try:
         satellites_dataframe = pd.read_csv('satellites_dataframe.csv')
         if mode == 'phase':
@@ -45,7 +45,7 @@ def main():
     mode = args.mode
 
     fig = plt.figure()
-    ani = FuncAnimation(fig, update_phase, interval=100)
+    ani = FuncAnimation(fig, update_fig, interval=1000)
 
     fig.set_tight_layout(True)
     plt.show()
