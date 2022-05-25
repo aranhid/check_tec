@@ -3,8 +3,9 @@
 """Consumes stream for printing all messages to the console.
 """
 
-import queue
+import os
 import sys
+import queue
 import socket
 import argparse
 import threading
@@ -76,7 +77,7 @@ def update_sat_data(sat, timestamp, phase_tec, p_range_tec):
             sat_df_outstanding = sat_df[sat_df['Timestamp'] <= time_border]
             satellites_dataframe.drop(index=sat_df_outstanding.index, inplace=True)
 
-    satellites_dataframe.to_csv("satellites_dataframe.csv")
+    satellites_dataframe.to_csv("csv/satellites_dataframe.csv")
 
 
 def check_phase(sat):
@@ -97,7 +98,7 @@ def check_phase(sat):
     if not checked_phase.empty:    
         problems_dataframe_phase = pd.concat([problems_dataframe_phase, checked_phase], ignore_index=True)
 
-    problems_dataframe_phase.to_csv("problems_phase.csv")
+    problems_dataframe_phase.to_csv("csv/problems_phase.csv")
 
     pprint(phase_tec_problems)
 
@@ -120,7 +121,7 @@ def check_range(sat):
     if not checked_range.empty:
         problems_dataframe_range = pd.concat([problems_dataframe_range, checked_range], ignore_index=True)
 
-    problems_dataframe_range.to_csv("problems_range.csv")
+    problems_dataframe_range.to_csv("csv/problems_range.csv")
 
     pprint(range_tec_problems)
 
@@ -196,6 +197,9 @@ def main():
         wrkr = threading.Thread(target=worker, daemon=True)
         wrkr.start()
         workers.append(wrkr)
+
+    if not os.path.exists('csv'):
+        os.mkdir('csv')
 
     try:
         while True:
